@@ -77,6 +77,16 @@ const nextConfig: NextConfig = {
       { source: "/categories-list", destination: "/shop-by-categories", permanent: true },
     ];
   },
+  // Older catalog rows point at /uploads/<file>, which only exists where the
+  // files sit in public/uploads. Checked after public files, so local disk still
+  // wins; anywhere else (S3 storage, serverless hosts) the uploads route serves them.
+  async rewrites() {
+    return {
+      afterFiles: [{ source: "/uploads/:file", destination: "/api/uploads/:file" }],
+      beforeFiles: [],
+      fallback: [],
+    };
+  },
   async headers() {
     return [
       {
