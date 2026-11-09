@@ -134,7 +134,7 @@ export function validateDeploymentEnv(env, { nodeVersion = process.versions.node
   if (!value("NEXT_PUBLIC_LIGHTGALLERY_LICENSE_KEY")) {
     addWarning("NEXT_PUBLIC_LIGHTGALLERY_LICENSE_KEY", "Verify the gallery's production licensing and configure the required public license key before release.");
   }
-  const storage = value("UPLOAD_STORAGE") || "local";
+  const storage = (value("UPLOAD_STORAGE") || "local").toLowerCase();
   if (!["local", "s3"].includes(storage)) {
     addError("UPLOAD_STORAGE", "Use local (persistent disk) or s3 (S3-compatible bucket).");
   }

@@ -19,7 +19,7 @@ const CONTENT_TYPES = { jpg: "image/jpeg", mp4: "video/mp4", png: "image/png", w
 // Images, plus the product reels and seller videos saved alongside them.
 const FILENAME = /^[a-f0-9-]+\.(jpg|mp4|png|webm|webp)$/i;
 
-if (env("UPLOAD_STORAGE") !== "s3") {
+if (env("UPLOAD_STORAGE").toLowerCase() !== "s3") {
 	console.error("Set UPLOAD_STORAGE=s3 and the UPLOAD_S3_* variables first (see .env.example).");
 	process.exit(1);
 }

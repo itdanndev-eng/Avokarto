@@ -55,7 +55,8 @@ function env(name: string) {
 }
 
 export function uploadStorageDriver() {
-	return env("UPLOAD_STORAGE") === "s3" ? "s3" : "local";
+	// Case-insensitive: "S3" in a hosting dashboard means the same as "s3".
+	return env("UPLOAD_STORAGE").toLowerCase() === "s3" ? "s3" : "local";
 }
 
 let client: S3Client | null = null;
