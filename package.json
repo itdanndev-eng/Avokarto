@@ -42,7 +42,8 @@
     "test:store-traffic": "node --test scripts/test-store-traffic.mjs",
     "test:billing": "node --test scripts/test-billing.mjs",
     "test:password-reset": "node --test scripts/test-password-reset.mjs",
-    "test:admin-alerts": "node --test scripts/test-admin-alerts.mjs"
+    "test:admin-alerts": "node --test scripts/test-admin-alerts.mjs",
+    "admin:password": "node scripts/admin-password.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1144.0",

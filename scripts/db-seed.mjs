@@ -1,5 +1,6 @@
 import path from "node:path";
 import process from "node:process";
+import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import pg from "pg";
 
@@ -56,7 +57,11 @@ const pool = new Pool({ connectionString: databaseUrl, ssl });
 const adminEmail = (process.env.ADMIN_BOOTSTRAP_EMAIL ?? "admin@avokarto.local")
 	.trim()
 	.toLowerCase();
-const adminPassword = process.env.ADMIN_BOOTSTRAP_PASSWORD ?? "ChangeMe123!";
+// No built-in default password: a shared default is public the moment the
+// source is. Without ADMIN_BOOTSTRAP_PASSWORD a random one is generated and
+// shown once, for this run only; set a real one with npm run admin:password.
+const generatedPassword = !process.env.ADMIN_BOOTSTRAP_PASSWORD?.trim();
+const adminPassword = process.env.ADMIN_BOOTSTRAP_PASSWORD?.trim() || randomBytes(18).toString("base64url");
 
 const categories = [
 	["Headphones", "headphones", "published", "/assets/images/catagory-img/cat-bg-headphones-01.webp"],
@@ -427,6 +432,7 @@ try {
 
 	await client.query("COMMIT");
 	console.log(`Seeded Unimart data. Admin: ${adminEmail}`);
+	if (generatedPassword) console.log(`Generated admin password for this run (shown once - change it with npm run admin:password): ${adminPassword}`);
 } catch (error) {
 	await client.query("ROLLBACK");
 	throw error;
