@@ -4,9 +4,9 @@ import { getSellLandingData } from "@/lib/backend/sell-landing";
 import { jsonLdString, pageMetadata, SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE } from "@/lib/seo";
 import { landingJsonLd } from "@/lib/seo-platform";
 
-// Rendered per request (signed-in state is client-side); the settings,
-// best sellers and counts come from a 5-minute cache in getSellLandingData.
-export const dynamic = "force-dynamic";
+// Signed-in state is client-side, so the page is served from the cache and
+// rebuilt in the background at most every 5 minutes, matching getSellLandingData.
+export const revalidate = 300;
 
 const TITLE = SITE_TAGLINE;
 

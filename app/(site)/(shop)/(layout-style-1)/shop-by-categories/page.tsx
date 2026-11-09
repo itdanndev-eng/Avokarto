@@ -8,7 +8,8 @@ import { Metadata } from "next";
 import { getCatalogCategories, getCatalogWindow } from "@/lib/backend/catalog-seo";
 import { breadcrumbJsonLd, jsonLdString } from "@/lib/seo";
 
-export const dynamic = "force-dynamic";
+// Served from cache and rebuilt in the background; the product grid refreshes live in the browser.
+export const revalidate = 120;
 
 export const metadata: Metadata = pageMetadata({
   title: "Shop by Category",
@@ -27,7 +28,7 @@ export default async function page() {
         <h1 className="h2 mb--12">Shop by category</h1>
         <p>Explore pet accessories, costumes, gadgets, and novelty finds.</p>
       </div>
-      <Banner />
+      <Banner initialProducts={window?.products} />
       <Categories initialCategories={categories} showCounts />
       <div className="rbt-component-area ptb--32 ptb_sm--12">
         <div className="container">

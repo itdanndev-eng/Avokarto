@@ -412,7 +412,7 @@ async function queryTopSellingByWindow(days: number | null, limit: number) {
 			WHERE p.status IN ('published', 'low stock')
 				AND o.status NOT IN ('cancelled', 'failed')
 				AND ($1::int IS NULL OR o.created_at >= now() - ($1::int * interval '1 day'))
-			GROUP BY p.id, c.name, b.name
+			GROUP BY p.id, c.id, b.id
 			HAVING SUM(oi.qty) > 0
 			ORDER BY units_sold DESC, p.updated_at DESC
 			LIMIT $2

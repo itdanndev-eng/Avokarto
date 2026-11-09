@@ -40,7 +40,10 @@ export async function generateMetadata({ searchParams }: Props) {
 export default async function ShopPage({ searchParams }: Props) {
   const query = await searchParams;
   const { page, search, categories, window } = await catalogData(query);
-  const allCategories = await getCatalogCategories();
+  const [allCategories, bannerWindow] = await Promise.all([
+    getCatalogCategories(),
+    search || categories.length ? getCatalogWindow(1) : window,
+  ]);
   const path = catalogPagePath("/shop", page);
   const heading = search ? `Search results for “${search}”` : categories.join(", ") || "Shop pet costumes, gadgets & novelty finds";
   const filters = { ...(search ? { q: search } : {}), ...(categories.length ? { category: categories } : {}) };
@@ -57,7 +60,7 @@ export default async function ShopPage({ searchParams }: Props) {
       <p className="mb--0">Explore our products, compare details, and find your next favourite.</p>
       <nav aria-label="Product categories" className={s.categories}>{allCategories.filter((category) => category.count > 0).map((category) => <Link key={category.id} href={categoryShopHref(category.name, category.slug)}>{category.name}</Link>)}</nav>
     </div>
-    {page === 1 ? <><Banner /><LiveShopDefault key={JSON.stringify([search, categories])} detailsPageUrl="/product" initialSearch={search} initialProducts={window?.products} defaultFilterCategory={categories} /></> : <div className="container"><CatalogProductGrid products={window?.products ?? []} /></div>}
+    {page === 1 ? <><Banner initialProducts={bannerWindow?.products} /><LiveShopDefault key={JSON.stringify([search, categories])} detailsPageUrl="/product" initialSearch={search} initialProducts={window?.products} defaultFilterCategory={categories} /></> : <div className="container"><CatalogProductGrid products={window?.products ?? []} /></div>}
     <div className="container"><CatalogPagination path="/shop" page={page} hasMore={window?.hasMore ?? false} filters={filters} /></div>
   </>;
 }

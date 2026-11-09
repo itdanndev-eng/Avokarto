@@ -13,7 +13,8 @@ export const metadata: Metadata = pageMetadata({
   path: "/contact",
 });
 
-export const dynamic = "force-dynamic";
+// Store contact details rarely change; serve from cache, refresh every 5 minutes.
+export const revalidate = 300;
 
 export default async function page() {
   const settings = await getPublicStoreSettings();

@@ -28,6 +28,7 @@
     "audit:production": "npm audit --omit=dev --audit-level=high",
     "icons:generate": "node scripts/generate-icon-css.mjs",
     "icons:check": "node scripts/generate-icon-css.mjs --check",
+    "icons:fonts": "node scripts/generate-icon-css.mjs --codepoints | python3 scripts/subset-icon-fonts.py && npm run icons:generate",
     "db:migrate": "node scripts/db-migrate.mjs",
     "db:seed": "node scripts/db-seed.mjs",
     "uploads:migrate": "node scripts/uploads-migrate.mjs",
@@ -78,6 +79,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@fullhuman/postcss-purgecss": "^7.0.2",
     "@next/bundle-analyzer": "16.4.2",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/bootstrap": "^5.2.10",

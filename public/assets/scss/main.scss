@@ -1,5 +1,7 @@
+/*! purgecss start ignore */
 @use "../css/vendor/bootstrap.min.css";
 @use "../css/plugins/fontawesome.used.css";
+/*! purgecss end ignore */
 @use "./plugins/used-plugins";
 @use "./style";
 @use "./custom";

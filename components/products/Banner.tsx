@@ -5,10 +5,13 @@ import Image from "next/image";
 import { useMemo } from "react";
 import { useCurrency } from "@/lib/currency";
 import { useLiveProducts } from "@/hooks/use-live-products";
+import type { Product } from "@/types/product";
 
-export default function Banner({ containerFull = false }) {
+// Pass the first catalog page the server already loaded so the banner renders
+// with the page instead of appearing later and pushing the shop down.
+export default function Banner({ containerFull = false, initialProducts }: { containerFull?: boolean; initialProducts?: Product[] }) {
   const { formatPrice } = useCurrency();
-  const { products, hasData } = useLiveProducts({ limit: 24 });
+  const { products, hasData } = useLiveProducts({ limit: 24, initialProducts });
 
   // Lead with a real on-sale product when one exists (the natural "banner"
   // moment), otherwise fall back to whatever is first in the live catalog -

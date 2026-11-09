@@ -62,7 +62,16 @@ const previewProductsById = createProductLookup(
   [...fashionDetailProducts, ...allProducts].reverse(),
 );
 
-export const dynamic = "force-dynamic";
+// Built on first visit, then served from cache and rebuilt in the background
+// at most once a minute. Price and stock refresh live in the browser
+// (useLiveProduct), so a cached page never sells at a stale price.
+export const revalidate = 60;
+
+// No pages are built ahead of time; returning a list (even empty) is what
+// lets each product page be cached after its first visit.
+export async function generateStaticParams() {
+  return [];
+}
 
 // Per-product title, description, social image, and canonical URL.
 export async function generateMetadata({ params }: {
