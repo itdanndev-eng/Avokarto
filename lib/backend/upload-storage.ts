@@ -50,13 +50,20 @@ export class RangeNotSatisfiableError extends Error {
 
 const localDir = path.join(process.cwd(), "public", "uploads");
 
+// Upload settings never contain quotes, so stray ones pasted from a .env file are dropped.
 function env(name: string) {
-	return process.env[name]?.trim() ?? "";
+	return (process.env[name] ?? "").trim().replace(/^["']+|["']+$/g, "").trim();
 }
 
 export function uploadStorageDriver() {
-	// Case-insensitive: "S3" in a hosting dashboard means the same as "s3".
-	return env("UPLOAD_STORAGE").toLowerCase() === "s3" ? "s3" : "local";
+	// Forgiving about how a hosting dashboard was filled in: case and stray
+	// quotes are ignored, and with a bucket and keys configured an empty or
+	// unrecognised value means S3. Only an explicit "local" keeps local disk.
+	const choice = env("UPLOAD_STORAGE").toLowerCase();
+	if (choice === "s3") return "s3";
+	if (choice === "local") return "local";
+	const configured = Boolean(env("UPLOAD_S3_BUCKET") && env("UPLOAD_S3_ACCESS_KEY_ID") && env("UPLOAD_S3_SECRET_ACCESS_KEY"));
+	return configured ? "s3" : "local";
 }
 
 let client: S3Client | null = null;
