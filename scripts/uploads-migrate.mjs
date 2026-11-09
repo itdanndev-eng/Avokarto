@@ -15,8 +15,9 @@ nextEnv.loadEnvConfig(process.cwd(), false, { error: () => {}, info: () => {} })
 
 const env = (name) => process.env[name]?.trim() ?? "";
 const dryRun = process.argv.includes("--dry");
-const CONTENT_TYPES = { jpg: "image/jpeg", png: "image/png", webp: "image/webp" };
-const FILENAME = /^[a-f0-9-]+\.(jpg|png|webp)$/i;
+const CONTENT_TYPES = { jpg: "image/jpeg", mp4: "video/mp4", png: "image/png", webm: "video/webm", webp: "image/webp" };
+// Images, plus the product reels and seller videos saved alongside them.
+const FILENAME = /^[a-f0-9-]+\.(jpg|mp4|png|webm|webp)$/i;
 
 if (env("UPLOAD_STORAGE") !== "s3") {
 	console.error("Set UPLOAD_STORAGE=s3 and the UPLOAD_S3_* variables first (see .env.example).");
