@@ -28,7 +28,7 @@ export type ResellerSettings = {
 	minPayout: number;
 	platformFeePercent: number;
 	signupsOpen: boolean;
-	/** Sellers need a Whop plan (lib/backend/billing.ts) for their store to be live. */
+	/** Sellers need a Kelviq plan (lib/backend/billing.ts) for their store to be live. */
 	subscriptionsRequired: boolean;
 };
 

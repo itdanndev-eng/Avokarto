@@ -5325,7 +5325,7 @@
 .billPrice { color: var(--s-ink-3); font-size: 14px; }
 .billPrice strong { color: var(--s-ink); font-size: 32px; font-weight: 800; letter-spacing: -0.03em; }
 .billFeatures { display: grid; gap: 8px; margin: 4px 0 auto; padding: 0 0 6px; list-style: none; }
-.billFeatures li { display: flex; align-items: flex-start; gap: 8px; color: var(--s-ink-2); font-size: 14px; line-height: 1.4; }
+.billFeatures li { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: var(--s-ink-2); font-size: 14px; line-height: 1.4; }
 .billFeatures svg { flex: none; margin-top: 1px; color: var(--s-brand); }
 .billCurrentTag { justify-content: center; min-height: 44px; font-size: 14px; }
 .billSecure { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }
@@ -5815,3 +5815,60 @@
 /* Hint text across the studio reads at 4.5:1 or better. */
 .admin .hint { color: var(--s-ink-3); }
 .admin .ordFoot small, .admin .ordRowMoney small { color: var(--s-ink-3); }
+
+/* Billing (Kelviq): actions, period switch, confirm dialog */
+.billActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.billCancel { margin-left: auto; }
+@media (max-width: 480px) {
+  .billActions > * { flex: 1 1 auto; justify-content: center; }
+  .billCancel { margin-left: 0; flex-basis: 100%; }
+}
+.billToggle {
+  display: inline-flex;
+  justify-self: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 4px;
+  border: 1px solid var(--s-line);
+  border-radius: 999px;
+  background: var(--s-muted);
+}
+.billToggle button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--s-ink-3);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.billToggle button[aria-checked="true"] { background: var(--s-surface); color: var(--s-ink); box-shadow: var(--s-shadow); }
+.billToggle button:focus-visible { outline: 2px solid var(--s-brand); outline-offset: 2px; }
+.billSave { padding: 2px 8px; border-radius: 999px; background: var(--s-brand-soft); color: var(--s-brand-dark); font-size: 12px; font-weight: 700; }
+@media (max-width: 380px) { .billToggle button { padding: 0 12px; } .billSave { display: none; } }
+.billBilled { display: block; margin-top: 2px; color: var(--s-ink-4); font-size: 12px; }
+.billDialog {
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 20px;
+  border: 1px solid var(--s-line);
+  border-radius: 16px;
+  background: var(--s-surface);
+  color: var(--s-ink);
+  box-shadow: 0 24px 64px rgb(0 0 0 / 18%);
+}
+.billDialog::backdrop { background: rgb(15 23 15 / 45%); }
+.billDialog form { display: grid; gap: 14px; }
+.billDialogHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.billDialogActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+@media (max-width: 480px) {
+  .billDialog { width: 100vw; max-width: 100vw; margin: auto 0 0; border-radius: 16px 16px 0 0; }
+  .billDialogActions > * { flex: 1 1 0; justify-content: center; }
+}
+.page .billTextarea { height: auto; min-height: 88px; padding: 10px 14px; resize: vertical; }

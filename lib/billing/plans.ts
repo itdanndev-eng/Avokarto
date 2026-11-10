@@ -1,7 +1,8 @@
 // Seller subscription plans. Shared by the landing page, the seller
 // dashboard and the server (limits are enforced in lib/backend). Prices
-// here are what the site shows - the amounts actually charged, and the
-// free trial, are configured on the matching Whop plans (WHOP_PLAN_*).
+// here are what the site shows until Kelviq's live prices load - the amounts
+// actually charged, and the free trial, are configured on the matching
+// Kelviq plans (identifiers starter / pro / scale, or KELVIQ_PLAN_*).
 
 export const TRIAL_DAYS = 7;
 
@@ -76,7 +77,15 @@ export function isPlanKey(value: unknown): value is PlanKey {
 	return typeof value === "string" && value in PLANS;
 }
 
-/** Whop membership statuses that keep a store open. past_due is Whop's grace period after a failed renewal. */
+/** How often a plan bills. Yearly is offered only when the Kelviq plan has a yearly price. */
+export type BillingPeriod = "MONTHLY" | "YEARLY";
+export const BILLING_PERIODS: readonly BillingPeriod[] = ["MONTHLY", "YEARLY"];
+
+export function isBillingPeriod(value: unknown): value is BillingPeriod {
+	return value === "MONTHLY" || value === "YEARLY";
+}
+
+/** Kelviq subscription statuses that keep a store open. past_due is the grace period after a failed renewal. */
 export const ACCESS_STATUSES = ["trialing", "active", "past_due"] as const;
 
 export function grantsAccess(status: string | null | undefined) {

@@ -78,9 +78,9 @@ npm run start
 Before launch, configure what a build can't verify:
 
 - **Email** - `RESEND_API_KEY`, `EMAIL_FROM` (order mail, password-reset codes)
-- **Billing** - `WHOP_API_KEY`, `WHOP_WEBHOOK_SECRET`, `WHOP_PLAN_STARTER`,
-  `WHOP_PLAN_PRO`, `WHOP_PLAN_SCALE`, `WHOP_ACCOUNT_ID`, and the webhook at
-  `/api/webhooks/whop`; then turn on "Require a subscription" in admin
+- **Billing (Kelviq)** - `KELVIQ_API_KEY`, `KELVIQ_WEBHOOK_SECRET`, optional
+  `KELVIQ_PRODUCT_ID` (live prices, yearly option) and `KELVIQ_PLAN_*`, and the
+  webhook at `/api/webhooks/kelviq`; then turn on "Require a subscription" in admin
 - **Database** - production `DATABASE_URL` / `DATABASE_SESSION_URL`, migrations applied
 
 See [docs/backend-deploy.md](docs/backend-deploy.md) for the full guide.

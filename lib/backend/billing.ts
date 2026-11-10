@@ -1,59 +1,83 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { dbQuery } from "@/lib/backend/db";
 import { HttpError } from "@/lib/backend/http";
-import { ACCESS_STATUSES, grantsAccess, isPlanKey, PLANS, type PlanKey } from "@/lib/billing/plans";
+import {
+	ACCESS_STATUSES,
+	grantsAccess,
+	isBillingPeriod,
+	PLAN_KEYS,
+	PLANS,
+	TRIAL_DAYS,
+	type BillingPeriod,
+	type PlanKey,
+} from "@/lib/billing/plans";
 import { siteUrl } from "@/lib/seo";
 
 /* ------------------------------------------------------------------------
- * Seller subscriptions through Whop (https://docs.whop.com).
+ * Seller subscriptions through Kelviq (https://docs.kelviq.com).
  *
- * Checkout: we create a Whop checkout configuration for the plan with the
- * seller's customer id in its metadata and send them to its purchase_url.
- * Whop copies that metadata onto the membership, so every membership
- * webhook tells us whose plan changed. Whop is the source of truth; this
- * module mirrors the membership into seller_subscriptions and opens or
- * closes the seller's store to match.
+ * Our customer id is the Kelviq customerId, so every subscription Kelviq
+ * reports is already keyed to the seller. Kelviq is the source of truth:
+ * webhooks only tell us *whose* subscription changed, and we then read that
+ * customer's subscriptions back from the API and mirror the current one
+ * into seller_subscriptions. Out-of-order or missing deliveries therefore
+ * can't leave a seller on the wrong plan, and the billing screen can
+ * reconcile on its own when a webhook is late.
  * --------------------------------------------------------------------- */
 
-const WHOP_API = (process.env.WHOP_API_BASE?.trim() || "https://api.whop.com/api/v1").replace(/\/+$/, "");
+function env(name: string) {
+	return process.env[name]?.trim() ?? "";
+}
 
-function whopPlanIds(): Record<PlanKey, string> {
+function kelviqApi() {
+	const custom = env("KELVIQ_API_BASE");
+	if (custom) return custom.replace(/\/+$/, "");
+	return env("KELVIQ_ENVIRONMENT").toLowerCase() === "sandbox"
+		? "https://sandboxapi.kelviq.com/api/v1"
+		: "https://api.kelviq.com/api/v1";
+}
+
+/** Kelviq plan identifiers for our plans; default to the plan keys themselves. */
+function kelviqPlanIds(): Record<PlanKey, string> {
 	return {
-		pro: process.env.WHOP_PLAN_PRO?.trim() ?? "",
-		scale: process.env.WHOP_PLAN_SCALE?.trim() ?? "",
-		starter: process.env.WHOP_PLAN_STARTER?.trim() ?? "",
+		pro: env("KELVIQ_PLAN_PRO") || "pro",
+		scale: env("KELVIQ_PLAN_SCALE") || "scale",
+		starter: env("KELVIQ_PLAN_STARTER") || "starter",
 	};
 }
 
-/** Whether checkout can run: an API key and a Whop plan for every plan we sell. */
+/** Whether checkout can run: a server API key. */
 export function billingConfigured() {
-	return Boolean(process.env.WHOP_API_KEY?.trim() && Object.values(whopPlanIds()).every(Boolean));
+	return Boolean(env("KELVIQ_API_KEY"));
 }
 
-function planForWhopPlan(whopPlanId: unknown): PlanKey | null {
-	if (typeof whopPlanId !== "string" || !whopPlanId) return null;
-	const plans = whopPlanIds();
-	return (Object.keys(plans) as PlanKey[]).find((key) => plans[key] === whopPlanId) ?? null;
+function planForIdentifier(identifier: unknown): PlanKey | null {
+	if (typeof identifier !== "string" || !identifier) return null;
+	const plans = kelviqPlanIds();
+	return PLAN_KEYS.find((key) => plans[key] === identifier) ?? null;
 }
 
-async function whopRequest<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
-	const key = process.env.WHOP_API_KEY?.trim();
+type KelviqError = { detail?: unknown; message?: unknown; errors?: unknown } | null;
+
+async function kelviqRequest<T>(method: "GET" | "POST", path: string, body?: unknown, { allow = [] as number[] } = {}): Promise<{ status: number; data: T | null }> {
+	const key = env("KELVIQ_API_KEY");
 	if (!key) throw new HttpError(503, "Billing isn't set up yet.", "BILLING_NOT_CONFIGURED");
-	const response = await fetch(`${WHOP_API}${path}`, {
+	const response = await fetch(`${kelviqApi()}${path}`, {
 		body: body === undefined ? undefined : JSON.stringify(body),
 		cache: "no-store",
-		headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+		headers: { Accept: "application/json", Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
 		method,
-		signal: AbortSignal.timeout(10_000),
+		signal: AbortSignal.timeout(12_000),
 	}).catch(() => {
 		throw new HttpError(502, "Couldn't reach our payment partner. Please try again.", "PAYMENTS_UNREACHABLE");
 	});
-	const payload = (await response.json().catch(() => null)) as T | null;
-	if (!response.ok || !payload) {
-		console.error("Whop API error", method, path, response.status, payload);
+	const data = (await response.json().catch(() => null)) as T | null;
+	if (!response.ok && !allow.includes(response.status)) {
+		console.error("Kelviq API error", method, path, response.status, data as KelviqError);
+		if (response.status === 429) throw new HttpError(503, "Billing is busy right now. Please try again in a minute.", "PAYMENTS_BUSY");
 		throw new HttpError(502, "Our payment partner didn't accept that. Please try again.", "PAYMENTS_ERROR");
 	}
-	return payload;
+	return { data, status: response.status };
 }
 
 /* ------------------------------------------------------------------------
@@ -62,33 +86,35 @@ async function whopRequest<T>(method: "GET" | "POST", path: string, body?: unkno
 
 export type SellerSubscription = {
 	cancelAtPeriodEnd: boolean;
+	chargePeriod: BillingPeriod;
 	currentPeriodEnd: string | null;
-	manageUrl: string;
-	membershipId: string;
 	plan: PlanKey;
 	status: string;
+	subscriptionId: string;
+	syncedAt: string | null;
 };
 
 type SubscriptionRow = {
 	cancel_at_period_end: boolean;
+	charge_period: string;
 	current_period_end: Date | null;
-	manage_url: string;
 	plan: PlanKey;
+	provider_subscription_id: string;
 	status: string;
-	whop_membership_id: string;
-	whop_updated_at: Date | null;
+	synced_at: Date | null;
 };
 
-const SUBSCRIPTION_COLUMNS = "plan, status, whop_membership_id, current_period_end, cancel_at_period_end, manage_url, whop_updated_at";
+const SUBSCRIPTION_COLUMNS = "plan, status, provider_subscription_id, charge_period, current_period_end, cancel_at_period_end, synced_at";
 
 function toSubscription(row: SubscriptionRow): SellerSubscription {
 	return {
 		cancelAtPeriodEnd: row.cancel_at_period_end,
+		chargePeriod: isBillingPeriod(row.charge_period) ? row.charge_period : "MONTHLY",
 		currentPeriodEnd: row.current_period_end?.toISOString() ?? null,
-		manageUrl: row.manage_url,
-		membershipId: row.whop_membership_id,
 		plan: row.plan,
 		status: row.status,
+		subscriptionId: row.provider_subscription_id,
+		syncedAt: row.synced_at?.toISOString() ?? null,
 	};
 }
 
@@ -162,65 +188,276 @@ export async function syncStoreBilling(customerId: string | null, required: bool
 }
 
 /* ------------------------------------------------------------------------
- * Checkout
+ * Reading Kelviq subscriptions back
  * --------------------------------------------------------------------- */
 
-/** A Whop checkout link for this seller and plan. */
-export async function createCheckout(customerId: string, plan: PlanKey) {
-	const whopPlan = whopPlanIds()[plan];
-	if (!billingConfigured() || !whopPlan) {
-		throw new HttpError(503, "Billing isn't set up yet. Please try again soon.", "BILLING_NOT_CONFIGURED");
+/** A Kelviq subscription, REST (camelCase) or webhook (snake_case) shape. */
+export type KelviqSubscription = {
+	billingPeriodEndTime?: string | null;
+	billing_period_end_time?: string | null;
+	canceledAt?: string | null;
+	canceled_at?: string | null;
+	endDate?: string | null;
+	end_date?: string | null;
+	id?: string;
+	modifiedOn?: string | null;
+	modified_on?: string | null;
+	plan?: { identifier?: string | null } | null;
+	recurrence?: string | null;
+	recurrenceUnit?: string | null;
+	recurrence_unit?: string | null;
+	status?: string;
+};
+
+function toDate(value: unknown) {
+	if (typeof value === "number") return new Date(value * 1000);
+	if (typeof value === "string" && value) {
+		// Kelviq sends ISO strings, and occasionally "yyyy-MM-dd HH:mm:ss" (UTC).
+		const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(value) ? `${value.replace(" ", "T")}Z` : value;
+		const date = new Date(/^\d+$/.test(normalized) ? Number(normalized) * 1000 : normalized);
+		return Number.isNaN(date.getTime()) ? null : date;
 	}
-	const current = await getSubscription(customerId);
-	// A second checkout would start a second, separately billed membership.
-	if (current && grantsAccess(current.status)) {
-		throw new HttpError(409, "You already have a plan. Change or cancel it from Manage billing.", "ALREADY_SUBSCRIBED");
-	}
-	const accountId = process.env.WHOP_ACCOUNT_ID?.trim();
-	const checkout = await whopRequest<{ purchase_url?: string }>("POST", "/checkout_configurations", {
-		...(accountId ? { account_id: accountId } : {}),
-		metadata: { customer_id: customerId, plan },
-		redirect_url: `${siteUrl()}/seller?tab=billing&checkout=done`,
-		variant_id: whopPlan,
-	});
-	if (!checkout.purchase_url) throw new HttpError(502, "Our payment partner didn't return a checkout link.", "PAYMENTS_ERROR");
-	return checkout.purchase_url;
+	return null;
+}
+
+function chargePeriodOf(subscription: KelviqSubscription): BillingPeriod {
+	const text = `${subscription.recurrence ?? ""} ${subscription.recurrenceUnit ?? subscription.recurrence_unit ?? ""}`.toUpperCase();
+	return /YEAR|ANNUAL/.test(text) ? "YEARLY" : "MONTHLY";
+}
+
+/** The fields we keep from one Kelviq subscription. */
+export function normalizeSubscription(subscription: KelviqSubscription) {
+	const status = (subscription.status ?? "").toLowerCase();
+	const endDate = toDate(subscription.endDate ?? subscription.end_date);
+	const canceledAt = toDate(subscription.canceledAt ?? subscription.canceled_at);
+	const periodEnd = toDate(subscription.billingPeriodEndTime ?? subscription.billing_period_end_time);
+	// Kelviq has no cancel-at-period-end flag: a still-running subscription
+	// that has a cancellation time or an end date is ending.
+	const cancelAtPeriodEnd = grantsAccess(status) && Boolean(canceledAt || endDate);
+	return {
+		cancelAtPeriodEnd,
+		chargePeriod: chargePeriodOf(subscription),
+		currentPeriodEnd: cancelAtPeriodEnd && endDate ? endDate : periodEnd ?? endDate,
+		id: subscription.id ?? "",
+		modifiedOn: toDate(subscription.modifiedOn ?? subscription.modified_on),
+		plan: planForIdentifier(subscription.plan?.identifier),
+		status,
+	};
 }
 
 /**
- * Whop only includes manage_url when the API key may manage members; when
- * a webhook arrived without one, look it up once and keep it.
+ * Of a customer's subscriptions, the one that decides their plan: one that
+ * grants access (newest first), else the most recently changed.
  */
-export async function ensureManageUrl(customerId: string, subscription: SellerSubscription) {
-	if (subscription.manageUrl || !process.env.WHOP_API_KEY?.trim()) return subscription;
-	try {
-		const membership = await whopRequest<{ manage_url?: string | null }>(
-			"GET",
-			`/memberships/${encodeURIComponent(subscription.membershipId)}`,
-		);
-		if (!membership.manage_url) return subscription;
-		await dbQuery(`UPDATE seller_subscriptions SET manage_url = $2 WHERE customer_id = $1`, [customerId, membership.manage_url]);
-		return { ...subscription, manageUrl: membership.manage_url };
-	} catch {
-		return subscription;
+export function pickCurrent(subscriptions: KelviqSubscription[]) {
+	const ours = subscriptions.map(normalizeSubscription).filter((item) => item.id && item.plan && item.status);
+	const newest = (a: (typeof ours)[number], b: (typeof ours)[number]) => (b.modifiedOn?.getTime() ?? 0) - (a.modifiedOn?.getTime() ?? 0);
+	return ours.filter((item) => grantsAccess(item.status)).sort(newest)[0] ?? ours.sort(newest)[0] ?? null;
+}
+
+async function listCustomerSubscriptions(customerId: string) {
+	const items: KelviqSubscription[] = [];
+	for (let page = 1; page <= 5; page += 1) {
+		const query = new URLSearchParams({ customer_id: customerId, page: String(page), page_size: "100" });
+		const { data } = await kelviqRequest<{ next?: string | null; results?: KelviqSubscription[] }>("GET", `/subscriptions/?${query}`);
+		items.push(...(data?.results ?? []));
+		if (!data?.next) break;
 	}
+	return items;
+}
+
+/**
+ * Reads this seller's subscriptions from Kelviq and mirrors the current one.
+ * Returns the stored subscription (null when they have never subscribed).
+ */
+export async function syncSubscription(customerId: string) {
+	const current = pickCurrent(await listCustomerSubscriptions(customerId));
+	if (!current?.plan) {
+		await dbQuery(`UPDATE seller_subscriptions SET synced_at = now() WHERE customer_id = $1`, [customerId]);
+		return getSubscription(customerId);
+	}
+	await dbQuery(
+		`
+			INSERT INTO seller_subscriptions (
+				customer_id, plan, provider_subscription_id, status, charge_period,
+				current_period_end, cancel_at_period_end, provider_updated_at, synced_at
+			)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
+			ON CONFLICT (customer_id) DO UPDATE SET
+				plan = EXCLUDED.plan,
+				provider_subscription_id = EXCLUDED.provider_subscription_id,
+				status = EXCLUDED.status,
+				charge_period = EXCLUDED.charge_period,
+				current_period_end = EXCLUDED.current_period_end,
+				cancel_at_period_end = EXCLUDED.cancel_at_period_end,
+				provider_updated_at = EXCLUDED.provider_updated_at,
+				synced_at = now(),
+				updated_at = now()
+		`,
+		[
+			customerId,
+			current.plan,
+			current.id,
+			current.status,
+			current.chargePeriod,
+			current.currentPeriodEnd,
+			current.cancelAtPeriodEnd,
+			current.modifiedOn,
+		],
+	);
+	return getSubscription(customerId);
 }
 
 /* ------------------------------------------------------------------------
- * Webhooks (Standard Webhooks signatures)
+ * Customers, checkout, plan changes, cancellation, portal
+ * --------------------------------------------------------------------- */
+
+/** Creates the seller as a Kelviq customer (keyed by our id); an existing one is fine. */
+async function ensureCustomer(customerId: string) {
+	const result = await dbQuery<{ email: string; name: string }>(`SELECT email, name FROM customers WHERE id = $1`, [customerId]);
+	const customer = result.rows[0];
+	if (!customer) throw new HttpError(404, "We couldn't find your account.", "NOT_FOUND");
+	await kelviqRequest("POST", "/customers/", { customerId, email: customer.email, name: customer.name }, { allow: [400, 409, 422] });
+	return customer;
+}
+
+export type CheckoutOptions = { period: BillingPeriod; plan: PlanKey };
+
+/** A Kelviq checkout link for this seller and plan (free trial on the first plan only). */
+export async function createCheckout(customerId: string, { period, plan }: CheckoutOptions) {
+	if (!billingConfigured()) {
+		throw new HttpError(503, "Billing isn't set up yet. Please try again soon.", "BILLING_NOT_CONFIGURED");
+	}
+	const current = await getSubscription(customerId);
+	// A second checkout would start a second, separately billed subscription.
+	if (current && grantsAccess(current.status)) {
+		throw new HttpError(409, "You already have a plan. Switch plans from your billing page.", "ALREADY_SUBSCRIBED");
+	}
+	const customer = await ensureCustomer(customerId);
+	const base = siteUrl();
+	const { data } = await kelviqRequest<{ checkoutUrl?: string }>("POST", "/checkout/", {
+		cancelUrl: `${base}/seller?tab=billing&checkout=cancelled`,
+		chargePeriod: period,
+		customerId,
+		email: customer.email,
+		lockEmail: true,
+		metadata: { customer_id: customerId, plan },
+		planIdentifier: kelviqPlanIds()[plan],
+		successUrl: `${base}/seller?tab=billing&checkout=done`,
+		// Trial only for a seller who has never had a plan.
+		...(current ? {} : { trialPeriod: TRIAL_DAYS }),
+	});
+	if (!data?.checkoutUrl) throw new HttpError(502, "Our payment partner didn't return a checkout link.", "PAYMENTS_ERROR");
+	return data.checkoutUrl;
+}
+
+async function requireActiveSubscription(customerId: string) {
+	const current = await syncSubscription(customerId);
+	if (!current || !grantsAccess(current.status)) {
+		throw new HttpError(409, "You don't have an active plan to change.", "NO_SUBSCRIPTION");
+	}
+	return current;
+}
+
+/** Moves the seller's subscription to another plan or billing period. */
+export async function changePlan(customerId: string, { period, plan }: CheckoutOptions) {
+	const current = await requireActiveSubscription(customerId);
+	if (current.plan === plan && current.chargePeriod === period && !current.cancelAtPeriodEnd) {
+		throw new HttpError(409, "You're already on that plan.", "SAME_PLAN");
+	}
+	await kelviqRequest("POST", `/subscriptions/${encodeURIComponent(current.subscriptionId)}/update/`, {
+		chargePeriod: period,
+		planIdentifier: kelviqPlanIds()[plan],
+	});
+	return syncSubscription(customerId);
+}
+
+const CANCEL_REASONS = ["TOO_EXPENSIVE", "MISSING_FEATURES", "SWITCHED_SERVICE", "UNUSED", "CUSTOMER_SERVICE", "LOW_QUALITY", "TOO_COMPLEX", "OTHER"] as const;
+export type CancelReason = (typeof CANCEL_REASONS)[number];
+export const CANCEL_REASON_KEYS = CANCEL_REASONS;
+
+/** Cancels at the end of the paid period (or trial); the store stays open until then. */
+export async function cancelSubscription(customerId: string, feedback?: { comment?: string; reason?: CancelReason }) {
+	const current = await requireActiveSubscription(customerId);
+	if (current.cancelAtPeriodEnd) throw new HttpError(409, "Your plan is already set to end.", "ALREADY_CANCELLING");
+	await kelviqRequest("POST", `/subscriptions/${encodeURIComponent(current.subscriptionId)}/cancel/`, {
+		cancellationType: "CURRENT_PERIOD_ENDS",
+		...(feedback?.reason ? { cancellationFeedback: feedback.reason } : {}),
+		...(feedback?.comment ? { cancellationComment: feedback.comment.slice(0, 500) } : {}),
+	});
+	return syncSubscription(customerId);
+}
+
+/** A signed link to Kelviq's customer portal (cards, invoices, plan). */
+export async function createPortalUrl(customerId: string) {
+	await ensureCustomer(customerId);
+	const { data } = await kelviqRequest<{ customerPortalUrl?: string; token?: string }>("POST", "/portal/session/", { customerId });
+	if (!data?.customerPortalUrl || !data.token) throw new HttpError(502, "Our payment partner didn't return a billing link.", "PAYMENTS_ERROR");
+	const url = new URL(data.customerPortalUrl);
+	url.searchParams.set("token", data.token);
+	return url.toString();
+}
+
+/* ------------------------------------------------------------------------
+ * Live prices (optional): KELVIQ_PRODUCT_ID turns on Kelviq's offering, so
+ * the billing screen shows the real amounts and a yearly option when the
+ * plans have one. Cached briefly; failures fall back to lib/billing/plans.
+ * --------------------------------------------------------------------- */
+
+export type PlanPrices = Partial<Record<PlanKey, Partial<Record<BillingPeriod, number>>>>;
+export type Offering = { currencyCode: string; currencySymbol: string; prices: PlanPrices } | null;
+
+type OfferingResponse = {
+	currencyCode?: string;
+	currencySymbol?: string;
+	plans?: { identifier?: string; price?: { charges?: { chargePeriod?: string; priceData?: { amount?: number | string } }[] } | null }[];
+};
+
+let offeringCache: { expires: number; value: Promise<Offering> } | null = null;
+
+async function loadOffering(): Promise<Offering> {
+	const productId = env("KELVIQ_PRODUCT_ID");
+	if (!productId || !billingConfigured()) return null;
+	try {
+		const { data } = await kelviqRequest<OfferingResponse>("GET", `/monetization/product-offering/${encodeURIComponent(productId)}/`);
+		const prices: PlanPrices = {};
+		for (const item of data?.plans ?? []) {
+			const plan = planForIdentifier(item.identifier);
+			if (!plan) continue;
+			for (const charge of item.price?.charges ?? []) {
+				const amount = Number(charge.priceData?.amount);
+				if (isBillingPeriod(charge.chargePeriod) && Number.isFinite(amount)) {
+					(prices[plan] ??= {})[charge.chargePeriod] = amount;
+				}
+			}
+		}
+		return { currencyCode: data?.currencyCode ?? "USD", currencySymbol: data?.currencySymbol ?? "$", prices };
+	} catch {
+		return null;
+	}
+}
+
+export function getOffering(): Promise<Offering> {
+	if (!offeringCache || offeringCache.expires < Date.now()) {
+		const value = loadOffering();
+		offeringCache = { expires: Date.now() + 10 * 60 * 1000, value };
+		// Don't keep a failure for ten minutes.
+		void value.then((result) => {
+			if (!result && offeringCache?.value === value) offeringCache = null;
+		});
+	}
+	return offeringCache.value;
+}
+
+/* ------------------------------------------------------------------------
+ * Webhooks: HMAC-SHA256 (hex) over "id.timestamp.body" with the signing
+ * secret as given (kq_whsec_...), in webhook-signature as "v1,<hex>".
  * --------------------------------------------------------------------- */
 
 const SIGNATURE_TOLERANCE_SECONDS = 5 * 60;
 
-/**
- * Verifies a Whop delivery: HMAC-SHA256 over "id.timestamp.body", base64,
- * in the webhook-signature header as "v1,<sig>" (space-separated when
- * there are several). Whop's docs describe the key both as the secret
- * itself and as the Standard Webhooks base64 part after the prefix, so both
- * are accepted - each still requires knowing the secret.
- */
-export function verifyWhopSignature(headers: Headers, body: string, now = Date.now()) {
-	const secret = process.env.WHOP_WEBHOOK_SECRET?.trim();
+export function verifyKelviqSignature(headers: Headers, body: string, now = Date.now()) {
+	const secret = env("KELVIQ_WEBHOOK_SECRET");
 	if (!secret) return false;
 	const id = headers.get("webhook-id");
 	const timestamp = headers.get("webhook-timestamp");
@@ -228,122 +465,47 @@ export function verifyWhopSignature(headers: Headers, body: string, now = Date.n
 	if (!id || !timestamp || !signatures || !/^\d+$/.test(timestamp)) return false;
 	if (Math.abs(now / 1000 - Number(timestamp)) > SIGNATURE_TOLERANCE_SECONDS) return false;
 
-	const keys = [Buffer.from(secret, "utf8")];
-	const prefixed = /^(?:whsec_|ws_)(.+)$/.exec(secret);
-	if (prefixed) {
-		const decoded = Buffer.from(prefixed[1], "base64");
-		if (decoded.length) keys.push(decoded);
-	}
-	const signed = `${id}.${timestamp}.${body}`;
-	const expected = keys.map((key) => Buffer.from(createHmac("sha256", key).update(signed).digest("base64")));
+	const expected = Buffer.from(createHmac("sha256", secret).update(`${id}.${timestamp}.${body}`, "utf8").digest("hex"), "hex");
 	return signatures.split(" ").some((entry) => {
 		const [version, signature] = entry.split(",");
-		if (version !== "v1" || !signature) return false;
-		const given = Buffer.from(signature);
-		return expected.some((candidate) => candidate.length === given.length && timingSafeEqual(candidate, given));
+		if (version !== "v1" || !signature || !/^[0-9a-f]+$/i.test(signature)) return false;
+		const given = Buffer.from(signature, "hex");
+		return given.length === expected.length && timingSafeEqual(given, expected);
 	});
 }
 
-type WhopMembership = {
-	cancel_at_period_end?: boolean | null;
-	current_period_end?: string | number | null;
-	id?: string;
-	manage_url?: string | null;
-	metadata?: Record<string, unknown> | null;
-	plan?: { id?: string } | null;
-	status?: string;
-	updated_at?: string | number | null;
-	variant_id?: string | null;
-};
-
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Whop timestamps are ISO strings; tolerate Unix seconds too.
-function toDate(value: unknown) {
-	if (typeof value === "number") return new Date(value * 1000);
-	if (typeof value === "string" && value) {
-		const date = new Date(/^\d+$/.test(value) ? Number(value) * 1000 : value);
-		return Number.isNaN(date.getTime()) ? null : date;
-	}
-	return null;
+/** The seller a webhook event is about, when it is one of ours. */
+export function webhookCustomerId(event: { data?: { object?: Record<string, unknown> | null } | null }) {
+	const object = event.data?.object ?? {};
+	const customer = object.customer as Record<string, unknown> | string | undefined;
+	const metadata = object.metadata as Record<string, unknown> | undefined;
+	const candidates = [
+		typeof customer === "object" && customer ? customer.customer_id ?? customer.customerId : undefined,
+		object.customer_id,
+		object.customerId,
+		metadata?.customer_id,
+	];
+	const found = candidates.find((value) => typeof value === "string" && UUID.test(value));
+	return typeof found === "string" ? found.toLowerCase() : null;
 }
 
 /** Records a delivery id; false when it was already handled. */
 export async function claimWebhookEvent(id: string, type: string) {
 	const result = await dbQuery(
-		`INSERT INTO whop_webhook_events (id, type) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING`,
+		`INSERT INTO billing_webhook_events (id, type) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING`,
 		[id, type],
 	);
 	return Boolean(result.rowCount);
 }
 
 export async function releaseWebhookEvent(id: string) {
-	await dbQuery(`DELETE FROM whop_webhook_events WHERE id = $1`, [id]);
+	await dbQuery(`DELETE FROM billing_webhook_events WHERE id = $1`, [id]);
 }
 
-/**
- * Applies a membership.* webhook. Returns the customer it changed, or null
- * when the membership isn't one of ours or the update was stale.
- */
-export async function applyMembership(membership: WhopMembership): Promise<string | null> {
-	const membershipId = membership.id;
-	const status = membership.status;
-	if (!membershipId || !status) return null;
-
-	const metadata = membership.metadata ?? {};
-	const existing = await dbQuery<SubscriptionRow & { customer_id: string }>(
-		`SELECT customer_id, ${SUBSCRIPTION_COLUMNS} FROM seller_subscriptions WHERE whop_membership_id = $1`,
-		[membershipId],
-	);
-	const customerId = typeof metadata.customer_id === "string" && UUID.test(metadata.customer_id)
-		? metadata.customer_id
-		: existing.rows[0]?.customer_id;
-	if (!customerId) return null;
-
-	const plan = planForWhopPlan(membership.variant_id ?? membership.plan?.id)
-		?? (isPlanKey(metadata.plan) ? metadata.plan : null)
-		?? existing.rows[0]?.plan;
-	if (!plan) return null;
-
-	const current = await getSubscription(customerId);
-	// A different, older membership (e.g. the one they cancelled before
-	// re-subscribing) must not replace a plan that still grants access.
-	if (current && current.membershipId !== membershipId && grantsAccess(current.status) && !grantsAccess(status)) {
-		return null;
-	}
-
-	const whopUpdatedAt = toDate(membership.updated_at);
-	const result = await dbQuery(
-		`
-			INSERT INTO seller_subscriptions (
-				customer_id, plan, whop_membership_id, status, current_period_end,
-				cancel_at_period_end, manage_url, whop_updated_at
-			)
-			VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, ''), $8)
-			ON CONFLICT (customer_id) DO UPDATE SET
-				plan = EXCLUDED.plan,
-				whop_membership_id = EXCLUDED.whop_membership_id,
-				status = EXCLUDED.status,
-				current_period_end = EXCLUDED.current_period_end,
-				cancel_at_period_end = EXCLUDED.cancel_at_period_end,
-				manage_url = COALESCE(NULLIF(EXCLUDED.manage_url, ''), seller_subscriptions.manage_url),
-				whop_updated_at = EXCLUDED.whop_updated_at,
-				updated_at = now()
-			WHERE seller_subscriptions.whop_membership_id <> EXCLUDED.whop_membership_id
-				OR seller_subscriptions.whop_updated_at IS NULL
-				OR EXCLUDED.whop_updated_at IS NULL
-				OR EXCLUDED.whop_updated_at >= seller_subscriptions.whop_updated_at
-		`,
-		[
-			customerId,
-			plan,
-			membershipId,
-			status,
-			toDate(membership.current_period_end),
-			membership.cancel_at_period_end === true,
-			membership.manage_url ?? null,
-			whopUpdatedAt,
-		],
-	);
-	return result.rowCount ? customerId : null;
+/** Only customers we know: a stray or foreign customer id is ignored. */
+export async function isKnownCustomer(customerId: string) {
+	const result = await dbQuery(`SELECT 1 FROM customers WHERE id = $1`, [customerId]);
+	return Boolean(result.rowCount);
 }

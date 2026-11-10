@@ -37,7 +37,7 @@ const STEPS = [
 	{ short: "Earnings", title: "Set what you earn on each sale", text: "Your margin is added to our price, and you can adjust it later" },
 	{ short: "Plan", title: `Pick your plan. Try it free for ${TRIAL_DAYS} days.`, text: "Full access from today. Cancel any time before your trial ends and you won't pay a thing." },
 ] as const;
-// Day the trial-ending reminder goes out (Whop's membership.trial_ending_soon).
+// Day the trial-ending reminder goes out (Kelviq's subscription.trial_will_end).
 const REMINDER_DAY = TRIAL_DAYS - 2;
 
 const noSubscribe = () => () => {};
@@ -267,7 +267,7 @@ export default function StartStore({ examples, publicSettings = null }: { exampl
 		router.push("/seller?welcome=1");
 	}
 
-	// The store exists; its free trial starts on Whop's secure checkout.
+	// The store exists; its free trial starts on Kelviq's secure checkout.
 	async function startTrial() {
 		if (checkingOut) return;
 		setCheckingOut(true);
