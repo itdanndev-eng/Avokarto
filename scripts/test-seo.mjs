@@ -287,7 +287,9 @@ test("landing FAQ structured data and subscription offers come from the same vis
   const actual = schemaFaq.mainEntity.map((question) => [question.name, question.acceptedAnswer.text]);
   assert.equal(JSON.stringify(actual), JSON.stringify(faq.sellerFaqs(settings)));
   const application = graph["@graph"].find((entry) => entry["@type"] === "WebApplication");
-  assert.deepEqual([...application.offers.map((offer) => Number(offer.price))], [...plans.PLAN_KEYS.map((key) => plans.PLANS[key].price)]);
+  // Each plan offers monthly then yearly billing, at the listed prices.
+  assert.deepEqual([...application.offers.map((offer) => Number(offer.price))], [...plans.PLAN_KEYS.flatMap((key) => [plans.PLANS[key].price, plans.PLANS[key].yearlyPrice])]);
+  assert.deepEqual([...new Set(application.offers.map((offer) => offer.priceSpecification.billingDuration))], ["P1M", "P1Y"]);
   assert.equal(application.aggregateRating, undefined, "no invented software reviews");
   assert.match(actual.flat().join(" "), /7-day free trial/);
   assert.doesNotMatch(actual.flat().join(" "), /no subscription|guaranteed income/i);

@@ -24,6 +24,11 @@
 .price strong { color: var(--ink); font-size: 46px; letter-spacing: -2px; }
 .tag { display: inline-block; font-size: 12px; padding: 5px 10px; color: var(--green); background: #edf5df; border-radius: 20px; font-weight: 700; }
 .featured { border: 2px solid var(--green); background: #f7faef; }
+.periodRow { display: flex; justify-content: center; margin: 8px 0 4px; }
+.billed { min-height: 1.8em; margin: 6px 0 0; color: var(--muted); font-size: 14px !important; line-height: 1.6 !important; }
+.billed del { color: #8b968a; }
+.billed b { color: var(--green); font-weight: 700; }
+.price strong { font-variant-numeric: tabular-nums; }
 .copy { max-width: 760px; margin: 40px 0; }
 .copy h2, .sectionTitle { color: var(--ink); font-size: 29px; line-height: 1.25; letter-spacing: -.8px; margin: 40px 0 16px; }
 .copy h3 { font-size: 21px; margin: 28px 0 12px; }

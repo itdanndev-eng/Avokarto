@@ -16,8 +16,10 @@ export type Plan = {
 	/** Most products the store can resell; null = the store maximum. */
 	listingLimit: number | null;
 	name: string;
-	/** USD per month. */
+	/** USD per month, billed monthly. */
 	price: number;
+	/** USD per year, billed yearly (two months free). */
+	yearlyPrice: number;
 };
 
 export const PLANS: Record<PlanKey, Plan> = {
@@ -36,6 +38,7 @@ export const PLANS: Record<PlanKey, Plan> = {
 		listingLimit: 25,
 		name: "Starter",
 		price: 17.99,
+		yearlyPrice: 179.99,
 	},
 	pro: {
 		blurb: "For growing brands ready to expand their catalog.",
@@ -51,6 +54,7 @@ export const PLANS: Record<PlanKey, Plan> = {
 		listingLimit: null,
 		name: "Pro",
 		price: 27.99,
+		yearlyPrice: 279.99,
 	},
 	// The extras here are services the team delivers, not product limits -
 	// keep this list to what you can actually provide.
@@ -68,6 +72,7 @@ export const PLANS: Record<PlanKey, Plan> = {
 		listingLimit: null,
 		name: "Scale",
 		price: 59.99,
+		yearlyPrice: 599.99,
 	},
 };
 
@@ -83,6 +88,34 @@ export const BILLING_PERIODS: readonly BillingPeriod[] = ["MONTHLY", "YEARLY"];
 
 export function isBillingPeriod(value: unknown): value is BillingPeriod {
 	return value === "MONTHLY" || value === "YEARLY";
+}
+
+/** What one billing period of this plan costs. */
+export function planPrice(plan: Plan, period: BillingPeriod) {
+	return period === "YEARLY" ? plan.yearlyPrice : plan.price;
+}
+
+/** The plan's cost per month on this billing period (yearly spread over 12). */
+export function monthlyCost(plan: Plan, period: BillingPeriod) {
+	return period === "YEARLY" ? Math.round((plan.yearlyPrice / 12) * 100) / 100 : plan.price;
+}
+
+/** Percent saved by paying yearly instead of twelve monthly payments. */
+export function yearlySaving(plan: Plan) {
+	return Math.max(0, Math.round((1 - plan.yearlyPrice / (plan.price * 12)) * 100));
+}
+
+/** The best yearly saving across plans, for "Save up to N%". */
+export const YEARLY_SAVING = Math.max(...Object.values(PLANS).map(yearlySaving));
+
+/** "$17.99", or "$15" for whole amounts. */
+export function usd(amount: number) {
+	return `$${Number.isInteger(amount) ? amount : amount.toFixed(2)}`;
+}
+
+/** The period a link asked for (?period=YEARLY), else monthly. */
+export function periodFromParam(value: string | null | undefined): BillingPeriod {
+	return value?.toUpperCase() === "YEARLY" ? "YEARLY" : "MONTHLY";
 }
 
 /** Kelviq subscription statuses that keep a store open. past_due is the grace period after a failed renewal. */

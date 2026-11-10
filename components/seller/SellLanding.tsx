@@ -34,7 +34,8 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import ModalTriggerButton from "@/components/action-buttons/ModalTriggerButton";
 import { useCustomerSession } from "@/hooks/use-customer-session";
 import type { SellLandingData } from "@/lib/backend/sell-landing";
-import { PLAN_KEYS, PLANS, TRIAL_DAYS } from "@/lib/billing/plans";
+import PeriodSwitch from "@/components/billing/PeriodSwitch";
+import { monthlyCost, PLAN_KEYS, PLANS, TRIAL_DAYS, usd, yearlySaving, type BillingPeriod } from "@/lib/billing/plans";
 import { sellerFaqs } from "@/lib/seller-faq";
 import { resellerPrice, suggestHandle } from "@/lib/resellerPricing";
 import { STORE_THEME_INFO, STORE_THEMES, type StoreTheme } from "@/lib/storeThemes";
@@ -221,6 +222,7 @@ export default function SellLanding({ data }: { data: SellLandingData }) {
 	// so a second "Build my store" doesn't overwrite it with the default.
 	const storedTheme = useSyncExternalStore(noSubscribe, readDraftTheme, () => "" as const);
 	const [pickedTheme, setTheme] = useState<StoreTheme | null>(null);
+	const [period, setPeriod] = useState<BillingPeriod>("MONTHLY");
 	const theme: StoreTheme = pickedTheme ?? (storedTheme || "minimal");
 	useEffect(() => {
 		const row = themeRow.current;
@@ -340,7 +342,7 @@ export default function SellLanding({ data }: { data: SellLandingData }) {
 	}
 
 	// `nav` renders the slim header pill (label + lime chevron dot) instead of text + arrow.
-	const primaryCta = (label: string, className = s.ctaPrimary, dashboardLabel = "Go to my dashboard", dashboardHref = "/seller", nav = false) => {
+	const primaryCta = (label: string, className = s.ctaPrimary, dashboardLabel = "Go to my dashboard", dashboardHref = "/seller", nav = false, yearly = false) => {
 		const content = (text: string) =>
 			nav ? (
 				<>
@@ -351,11 +353,11 @@ export default function SellLanding({ data }: { data: SellLandingData }) {
 				<>{text} <ArrowRight size={18} /></>
 			);
 		return hasStore ? (
-			<Link className={className} href={dashboardHref}>
+			<Link className={className} href={yearly ? `${dashboardHref}${dashboardHref.includes("?") ? "&" : "?"}period=yearly` : dashboardHref}>
 				{content(dashboardLabel)}
 			</Link>
 		) : (
-			<Link className={className} href="/start" onClick={claim}>
+			<Link className={className} href={yearly ? "/start?period=yearly" : "/start"} onClick={claim}>
 				{content(label)}
 			</Link>
 		);
@@ -836,18 +838,25 @@ export default function SellLanding({ data }: { data: SellLandingData }) {
 						</p>
 					</header>
 					<div className={pr.wrap}>
+						<PeriodSwitch onChange={setPeriod} value={period} />
 						<div className={pr.grid}>
 							{PLAN_KEYS.map((key) => {
 								const plan = PLANS[key];
-								const sales = saleProfit > 0 ? Math.ceil(plan.price / saleProfit) : 0;
+								const perMonth = monthlyCost(plan, period);
+								const sales = saleProfit > 0 ? Math.ceil(perMonth / saleProfit) : 0;
 								return (
 									<article className={pr.plan} data-featured={key === "pro" || undefined} key={key}>
 										<div className={pr.head}>
 											<p className={pr.name}>{plan.name}{key === "pro" ? <span>Most popular</span> : null}</p>
 											<p className={pr.blurb}>{plan.blurb}</p>
-											<p className={pr.price}><strong>${plan.price}</strong> / month</p>
-											{sales ? <p className={pr.covered}>Covered by {sales} {sales === 1 ? "sale" : "sales"}</p> : null}
-											{primaryCta(`Start ${TRIAL_DAYS}-day free trial`, `${s.ctaPrimary} ${styles.btnBlock} ${key === "pro" ? pr.ctaLime : pr.ctaQuiet}`, `Choose ${plan.name}`, "/seller?tab=billing")}
+											<p className={pr.price}><strong>{usd(perMonth)}</strong> / month</p>
+											<p className={pr.billed}>
+												{period === "YEARLY"
+													? <>{usd(plan.yearlyPrice)} billed yearly · <b>save {yearlySaving(plan)}%</b></>
+													: "Billed monthly"}
+											</p>
+											{sales ? <p className={pr.covered}>Covered by {sales} {sales === 1 ? "sale" : "sales"} a month</p> : null}
+											{primaryCta(`Start ${TRIAL_DAYS}-day free trial`, `${s.ctaPrimary} ${styles.btnBlock} ${key === "pro" ? pr.ctaLime : pr.ctaQuiet}`, `Choose ${plan.name}`, "/seller?tab=billing", false, period === "YEARLY")}
 										</div>
 										<ul className={pr.list}>
 											{plan.features.map((item) => item.startsWith("Everything in")

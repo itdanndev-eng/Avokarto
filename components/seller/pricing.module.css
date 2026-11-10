@@ -15,6 +15,10 @@
 .price strong { color: var(--s-ink); font-size: 48px; font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: -.02em; line-height: 56px; }
 .plan[data-featured] .price { color: rgb(255 255 255 / 80%); }
 .plan[data-featured] .price strong { color: #fff; }
+.wrap .billed { margin: 2px 0 8px; color: var(--s-ink-3); font-size: 13px; font-variant-numeric: tabular-nums; line-height: 18px; }
+.wrap .billed b { color: #2f6b1f; font-weight: 600; }
+.plan[data-featured] .billed { color: rgb(255 255 255 / 70%); }
+.plan[data-featured] .billed b { color: var(--lime); }
 .wrap .covered { margin: 0 0 20px; color: #2f6b1f; font-size: 14px; font-weight: 500; line-height: 20px; }
 .plan[data-featured] .covered { color: var(--lime); }
 .list { display: grid; align-content: start; gap: 12px; margin: 0; padding: 0; list-style: none; }

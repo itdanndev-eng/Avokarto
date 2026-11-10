@@ -9,7 +9,8 @@ import ModalTriggerButton from "@/components/action-buttons/ModalTriggerButton";
 import { useCustomerSession } from "@/hooks/use-customer-session";
 import { useUiStore } from "@/context/uiStore";
 import type { SellLandingProduct } from "@/lib/backend/sell-landing";
-import { PLAN_KEYS, PLANS, TRIAL_DAYS, type PlanKey } from "@/lib/billing/plans";
+import PeriodSwitch from "@/components/billing/PeriodSwitch";
+import { monthlyCost, PLAN_KEYS, PLANS, TRIAL_DAYS, usd, yearlySaving, type BillingPeriod, type PlanKey } from "@/lib/billing/plans";
 import { resellerPrice } from "@/lib/resellerPricing";
 import { STORE_NAME_EXAMPLES, storeNameIdeas, TAGLINE_EXAMPLES, taglineIdeas } from "@/lib/storeNameIdeas";
 import { useTypedPlaceholder } from "@/hooks/useTypedPlaceholder";
@@ -52,7 +53,7 @@ function subscribeResize(onChange: () => void) {
  * visitor tried on the homepage; sends sellers who already have a store to
  * their dashboard. On phones the live store opens full screen on request.
  */
-export default function StartStore({ examples, publicSettings = null }: { examples: SellLandingProduct[]; publicSettings?: SellerSettings | null }) {
+export default function StartStore({ examples, initialPeriod = "MONTHLY", publicSettings = null }: { examples: SellLandingProduct[]; initialPeriod?: BillingPeriod; publicSettings?: SellerSettings | null }) {
 	const id = useId();
 	const router = useRouter();
 	const { customer, hydrated, refresh } = useCustomerSession();
@@ -90,6 +91,10 @@ export default function StartStore({ examples, publicSettings = null }: { exampl
 	const margin = Math.min(pickedMargin ?? maxMargin, maxMargin);
 	// Dropmax-style: the plan is chosen during setup and checkout follows the launch.
 	const [plan, setPlan] = useState<PlanKey>("pro");
+	const [period, setPeriod] = useState<BillingPeriod>(initialPeriod);
+	const yearly = period === "YEARLY";
+	// What the chosen plan costs once the trial ends, in words.
+	const afterTrial = yearly ? `${usd(PLANS[plan].yearlyPrice)}/year` : `${usd(PLANS[plan].price)}/month`;
 	const [checkingOut, setCheckingOut] = useState(false);
 	const [checkoutError, setCheckoutError] = useState<string | undefined>();
 	const billingReady = Boolean(state?.billing?.configured);
@@ -273,7 +278,7 @@ export default function StartStore({ examples, publicSettings = null }: { exampl
 		setCheckingOut(true);
 		setCheckoutError(undefined);
 		try {
-			const { url } = await sellerRequest<{ url: string }>("POST", "/api/seller/billing/checkout", { plan });
+			const { url } = await sellerRequest<{ url: string }>("POST", "/api/seller/billing/checkout", { period, plan });
 			clearDraft();
 			window.location.assign(url);
 		} catch (caught) {
@@ -430,7 +435,7 @@ export default function StartStore({ examples, publicSettings = null }: { exampl
 						busy: checkingOut,
 						error: checkoutError,
 						label: `Start my ${TRIAL_DAYS}-day free trial`,
-						note: `${PLANS[plan].name} plan - $0 today, then $${PLANS[plan].price}/month. You'll confirm on our secure checkout; cancel any time.`,
+						note: `${PLANS[plan].name} plan${yearly ? " (yearly)" : ""} - $0 today, then ${afterTrial}. You'll confirm on our secure checkout; cancel any time.`,
 						onClick: () => void startTrial(),
 					} : undefined}
 					phase={launchPhase}
@@ -562,6 +567,7 @@ export default function StartStore({ examples, publicSettings = null }: { exampl
 									) : null}
 									{step === 3 ? (
 										<div className={s.obFields} key="plan">
+											<PeriodSwitch className={s.planPeriod} onChange={setPeriod} value={period} />
 											<div aria-label="Plan" className={s.planPick} role="radiogroup">
 												{PLAN_KEYS.map((key) => {
 													const option = PLANS[key];
@@ -571,7 +577,7 @@ export default function StartStore({ examples, publicSettings = null }: { exampl
 																<span className={s.planRadio} aria-hidden="true">{plan === key ? <Check size={12} strokeWidth={3} /> : null}</span>
 																<strong>{option.name}</strong>
 																{key === "pro" ? <span className={s.planPopular}>Most popular</span> : null}
-																<span className={s.planOptionPrice}><b>${option.price}</b>/mo</span>
+																<span className={s.planOptionPrice}><b>{usd(monthlyCost(option, period))}</b>/mo{yearly ? <small>{usd(option.yearlyPrice)}/yr · save {yearlySaving(option)}%</small> : null}</span>
 															</span>
 															<span className={s.planOptionBlurb}>{option.blurb}</span>
 															<span className={s.planOptionFeatures}>
@@ -585,7 +591,7 @@ export default function StartStore({ examples, publicSettings = null }: { exampl
 											<ol aria-label="How your free trial works" className={s.trialTimeline}>
 												<li><span className={s.trialDot}><Store size={14} /></span><div><strong>Today</strong><small>Your store opens with full {PLANS[plan].name} access. $0 due.</small></div></li>
 												<li><span className={s.trialDot}><Bell size={14} /></span><div><strong>Day {REMINDER_DAY}</strong><small>We remind you before your trial ends.</small></div></li>
-												<li><span className={s.trialDot}><CreditCard size={14} /></span><div><strong>Day {TRIAL_DAYS}</strong><small>${PLANS[plan].price}/month starts. Cancel before then and pay nothing.</small></div></li>
+												<li><span className={s.trialDot}><CreditCard size={14} /></span><div><strong>Day {TRIAL_DAYS}</strong><small>{afterTrial} starts{yearly ? ", billed once for the year" : ""}. Cancel before then and pay nothing.</small></div></li>
 											</ol>
 											<p className={s.trialSecure}><Lock size={13} /> {billingReady ? "Secure checkout right after your store opens." : "Billing opens soon - your store opens today either way."}</p>
 										</div>

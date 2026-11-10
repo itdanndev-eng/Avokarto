@@ -1,0 +1,70 @@
+/* Monthly / Yearly switch. Brand greens from the seller dashboard. */
+.switch {
+  --ps-ink: #1c2617;
+  --ps-muted: #5c6756;
+  --ps-track: #eef2e7;
+  --ps-line: #e3e8dc;
+  --ps-thumb: #fff;
+  --ps-save-bg: #f2f8e8;
+  --ps-save-ink: #174d0a;
+  display: inline-flex;
+  justify-self: center;
+  align-self: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 4px;
+  border: 1px solid var(--ps-line);
+  border-radius: 999px;
+  background: var(--ps-track);
+}
+.switch[data-tone="dark"] {
+  --ps-ink: #fff;
+  --ps-muted: rgb(255 255 255 / 72%);
+  --ps-track: rgb(255 255 255 / 8%);
+  --ps-line: rgb(255 255 255 / 14%);
+  --ps-thumb: rgb(255 255 255 / 16%);
+  --ps-save-bg: #c6f06c;
+  --ps-save-ink: #174d0a;
+}
+.option {
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ps-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+.option[aria-checked="true"] {
+  background: var(--ps-thumb);
+  color: var(--ps-ink);
+  box-shadow: 0 1px 2px rgb(20 32 10 / 8%), 0 0 0 1px rgb(20 32 10 / 6%);
+}
+.option:focus-visible { outline: 2px solid #3e8315; outline-offset: 2px; }
+.save {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--ps-save-bg);
+  color: var(--ps-save-ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+/* Phones: the switch spans the width so both options are easy to tap. */
+@media (max-width: 480px) {
+  .switch { display: flex; width: 100%; justify-self: stretch; }
+  .option { min-height: 44px; padding: 0 12px; }
+}
+@media (max-width: 340px) { .save { padding: 2px 6px; font-size: 11px; } }
+@media (prefers-reduced-motion: reduce) { .option { transition: none; } }

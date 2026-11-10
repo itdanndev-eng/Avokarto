@@ -16,20 +16,24 @@ export function platformApplicationJsonLd() {
     browserRequirements: "Requires JavaScript and an internet connection",
     provider: { "@id": `${siteUrl()}/#organization` },
     featureList: ["Branded dropshipping stores", "Product catalog", "Store themes", "Product reels and video studio", "Order fulfilment", "Seller dashboard"],
-    offers: PLAN_KEYS.map((key) => ({
+    // Monthly and yearly billing for every plan.
+    offers: PLAN_KEYS.flatMap((key) => ([
+      { label: "", amount: PLANS[key].price, unitText: "month", billingDuration: "P1M" },
+      { label: " (yearly)", amount: PLANS[key].yearlyPrice, unitText: "year", billingDuration: "P1Y" },
+    ]).map((period) => ({
       "@type": "Offer",
-      name: PLANS[key].name,
+      name: `${PLANS[key].name}${period.label}`,
       url: `${siteUrl()}/pricing#${key}`,
-      price: PLANS[key].price.toFixed(2),
+      price: period.amount.toFixed(2),
       priceCurrency: "USD",
       priceSpecification: {
         "@type": "UnitPriceSpecification",
-        price: PLANS[key].price.toFixed(2),
+        price: period.amount.toFixed(2),
         priceCurrency: "USD",
-        unitText: "month",
-        billingDuration: "P1M",
+        unitText: period.unitText,
+        billingDuration: period.billingDuration,
       },
-    })),
+    }))),
   };
 }
 
