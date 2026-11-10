@@ -209,23 +209,31 @@ div.start .obExamples li { display: flex; align-items: center; gap: 12px; min-wi
 div.start .obEstimate p { color: var(--ink-3); font-size: 12px; line-height: 1.4; }
 
 /* ---- step 4: plan ---- */
+/* A plan reads as one row - radio, name and line, price - and only the
+   chosen plan opens to list what it includes. */
 .planPick { display: grid; gap: 8px; }
-.planOption { display: grid; align-content: start; gap: 8px; min-width: 0; padding: 16px; border: 0; border-radius: 12px; background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); text-align: left; cursor: pointer; transition: background-color 160ms var(--ease), box-shadow 160ms var(--ease); }
+.planOption { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 4px 12px; min-width: 0; padding: 14px 16px; border: 0; border-radius: 14px; background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); text-align: left; cursor: pointer; transition: background-color 160ms var(--ease), box-shadow 160ms var(--ease); }
 .planOption[aria-checked="true"] { background: var(--lime-soft); box-shadow: inset 0 0 0 1.5px var(--brand); }
-.planOptionHead { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
-.planOptionHead strong { color: var(--ink); font-size: 16px; font-weight: 500; }
-.planRadio { display: grid; flex: none; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: var(--brand-dark); box-shadow: inset 0 0 0 1px var(--line-2); }
+.planOption:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.planRadio { display: grid; flex: none; place-items: center; width: 20px; height: 20px; margin-top: 2px; border-radius: 50%; color: var(--brand-dark); box-shadow: inset 0 0 0 1.5px var(--line-2); transition: background-color 160ms var(--ease), box-shadow 160ms var(--ease); }
 .planOption[aria-checked="true"] .planRadio { background: var(--lime); box-shadow: none; }
-.planPopular { color: var(--ink-3); font-size: 12px; }
-.planOptionPrice { margin-left: auto; color: var(--ink-3); font-size: 13px; white-space: nowrap; }
-.planOptionPrice b { color: var(--ink); font-size: 20px; font-weight: 500; font-variant-numeric: tabular-nums; }
-.planOptionPrice small { display: block; color: var(--ink-3); font-size: 11px; line-height: 1.3; text-align: right; }
+.planMain { display: grid; gap: 2px; min-width: 0; }
+.planName { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.planName strong { color: var(--ink); font-size: 16px; font-weight: 600; line-height: 24px; }
+.planPopular { padding: 2px 8px; border-radius: 999px; background: var(--lime); color: var(--brand-dark); font-size: 11px; font-weight: 600; line-height: 16px; white-space: nowrap; }
+.planOptionBlurb { color: var(--ink-2); font-size: 13px; line-height: 1.45; }
+.planOptionPrice { display: grid; justify-items: end; gap: 1px; color: var(--ink-3); font-size: 13px; text-align: right; white-space: nowrap; }
+.planOptionPrice b { color: var(--ink); font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.01em; line-height: 24px; }
+.planOptionPrice small { color: var(--ink-3); font-size: 11px; font-variant-numeric: tabular-nums; line-height: 16px; }
+.planOptionFeatures { display: none; grid-column: 2 / -1; gap: 6px; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+.planOption[aria-checked="true"] .planOptionFeatures { display: grid; animation: planOpen 220ms var(--ease); }
+.planOptionFeatures span { display: flex; align-items: flex-start; gap: 8px; color: var(--ink); font-size: 13px; line-height: 1.4; }
+.planOptionFeatures em { color: var(--ink-3); font-size: 12px; font-style: normal; line-height: 1.4; }
+.planOptionFeatures svg { flex: none; margin-top: 2px; color: var(--brand); }
+@keyframes planOpen { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .planOption[aria-checked="true"] .planOptionFeatures { animation: none; } }
 .planPeriod { justify-self: start; margin-bottom: 4px; }
 @media (max-width: 480px) { .planPeriod { justify-self: stretch; } }
-.planOptionBlurb { color: var(--ink-2); font-size: 13px; line-height: 1.45; }
-.planOptionFeatures { display: flex; flex-wrap: wrap; gap: 4px 12px; }
-.planOptionFeatures span { display: flex; align-items: flex-start; gap: 8px; color: var(--ink-2); font-size: 13px; line-height: 1.35; }
-.planOptionFeatures svg { flex: none; margin-top: 2px; color: var(--ink-3); }
 .trialTimeline { display: grid; gap: 12px; margin: 0; padding: 16px; border-radius: 12px; background: var(--raised); list-style: none; }
 div.start .trialTimeline li { position: relative; display: flex; align-items: flex-start; gap: 12px; margin: 0; }
 .trialTimeline li:not(:last-child)::after { position: absolute; top: 28px; bottom: -12px; left: 14px; width: 1px; background: var(--line-2); content: ""; }
@@ -317,8 +325,9 @@ div.start .obPreviewBar h2, div.start .obSheetBar h2 { display: flex; align-item
   .nameIdeasRow > button { max-width: none; scroll-snap-align: start; }
   /* The shuffle leads here, so it's never scrolled out of reach. */
   .nameIdeasRow > .nameShuffle { order: -1; }
-  /* Only the chosen plan stays open, so all three fit on a small screen. */
-  .planOption[aria-checked="false"] .planOptionFeatures, .planOption[aria-checked="false"] .planOptionBlurb { display: none; }
+  /* Small screens: the other plans shrink to a name and a price, so all three fit. */
+  .planOption[aria-checked="false"] .planOptionBlurb { display: none; }
+  .planOption { padding: 12px 14px; }
 }
 @container form (min-width: 360px) {
   .linkGlobe { display: block; }

@@ -10,7 +10,7 @@ import { useCustomerSession } from "@/hooks/use-customer-session";
 import { useUiStore } from "@/context/uiStore";
 import type { SellLandingProduct } from "@/lib/backend/sell-landing";
 import PeriodSwitch from "@/components/billing/PeriodSwitch";
-import { monthlyCost, PLAN_KEYS, PLANS, TRIAL_DAYS, usd, yearlySaving, type BillingPeriod, type PlanKey } from "@/lib/billing/plans";
+import { monthlyCost, PLAN_KEYS, PLANS, TRIAL_DAYS, usd, type BillingPeriod, type PlanKey } from "@/lib/billing/plans";
 import { resellerPrice } from "@/lib/resellerPricing";
 import { STORE_NAME_EXAMPLES, storeNameIdeas, storeNamePool, TAGLINE_EXAMPLES, taglineIdeas } from "@/lib/storeNameIdeas";
 import { useTypedPlaceholder } from "@/hooks/useTypedPlaceholder";
@@ -582,15 +582,23 @@ export default function StartStore({ examples, initialPeriod = "MONTHLY", public
 													const option = PLANS[key];
 													return (
 														<button aria-checked={plan === key} className={s.planOption} data-popular={key === "pro" || undefined} key={key} onClick={() => setPlan(key)} role="radio" type="button">
-															<span className={s.planOptionHead}>
-																<span className={s.planRadio} aria-hidden="true">{plan === key ? <Check size={12} strokeWidth={3} /> : null}</span>
-																<strong>{option.name}</strong>
-																{key === "pro" ? <span className={s.planPopular}>Most popular</span> : null}
-																<span className={s.planOptionPrice}><b>{usd(monthlyCost(option, period))}</b>/mo{yearly ? <small>{usd(option.yearlyPrice)}/yr · save {yearlySaving(option)}%</small> : null}</span>
+															<span className={s.planRadio} aria-hidden="true">{plan === key ? <Check size={12} strokeWidth={3} /> : null}</span>
+															<span className={s.planMain}>
+																<span className={s.planName}>
+																	<strong>{option.name}</strong>
+																	{key === "pro" ? <span className={s.planPopular}>Most popular</span> : null}
+																</span>
+																<span className={s.planOptionBlurb}>{option.blurb}</span>
 															</span>
-															<span className={s.planOptionBlurb}>{option.blurb}</span>
+															<span className={s.planOptionPrice}>
+																<span><b>{usd(monthlyCost(option, period))}</b>/mo</span>
+																<small>{yearly ? `${usd(option.yearlyPrice)} billed yearly` : "billed monthly"}</small>
+															</span>
+															{/* Only the chosen plan lists what it includes. */}
 															<span className={s.planOptionFeatures}>
-																{option.features.slice(0, 3).map((feature) => <span key={feature}><Check size={12} /> {feature}</span>)}
+																{option.features.slice(0, 4).map((feature) => feature.startsWith("Everything in")
+																	? <em key={feature}>{feature}, plus</em>
+																	: <span key={feature}><Check size={13} strokeWidth={2.5} /> {feature}</span>)}
 															</span>
 														</button>
 													);
