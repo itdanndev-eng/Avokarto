@@ -17,7 +17,6 @@ import {
 	Plus,
 	Search,
 	Settings,
-	ShoppingBag,
 	Store,
 	Tag,
 	UserRound,
@@ -31,6 +30,7 @@ import { Fragment, useCallback, useEffect, useState } from "react";
 import ModalTriggerButton from "@/components/action-buttons/ModalTriggerButton";
 import { useLiveResource } from "@/hooks/use-live-resource";
 import { useCustomerSession } from "@/hooks/use-customer-session";
+import { TRIAL_DAYS } from "@/lib/billing/plans";
 import CommandPalette, { type Command } from "./CommandPalette";
 import SellerBilling from "./SellerBilling";
 import SellerCatalog from "./SellerCatalog";
@@ -176,13 +176,38 @@ export default function SellerDashboard() {
 
 	if (hydrated && !customer) {
 		return (
-			<div className={`${styles.page} ${styles.admin}`}>
-				<div className={`${styles.container} ${styles.card} ${styles.empty}`}>
-					<span className={styles.emptyIcon}><ShoppingBag /></span>
-					<p className={styles.cardTitle}>Sign in to manage your store</p>
-					<ModalTriggerButton className={styles.btn} openModalName="signinModal">Sign in</ModalTriggerButton>
-					<Link className={styles.muted} href="/start">New here? Open a free store</Link>
-				</div>
+			<div className={`${styles.page} ${styles.admin} ${styles.gate}`}>
+				<section aria-labelledby="studio-gate-title" className={styles.gateCard}>
+					<div className={styles.gateMain}>
+						<Link aria-label="Avokarto home" className={styles.gateBrand} href="/">
+							<Image alt="" height={32} src="/assets/images/logo/avokarto-logo-mark.webp" width={32} />
+							<span>avokarto <small>Store studio</small></span>
+						</Link>
+						<h1 className={styles.gateTitle} id="studio-gate-title">Sign in to your store studio</h1>
+						<p className={styles.gateText}>Manage products, orders, videos and earnings for your Avokarto store, all in one place.</p>
+						<div className={styles.gateActions}>
+							<ModalTriggerButton className={`${styles.btn} ${styles.gatePrimary}`} openModalName="signinModal">Sign in</ModalTriggerButton>
+							<Link className={`${styles.ghost} ${styles.gateSecondary}`} href="/start">
+								<Plus size={16} /> Open your store
+							</Link>
+						</div>
+						<p className={styles.gateNote}>New to Avokarto? Every plan starts with a {TRIAL_DAYS}-day free trial. We stock, pack and ship every order.</p>
+					</div>
+					{/* What's inside, so the page says what signing in gets you. */}
+					<ul aria-label="Inside your store studio" className={styles.gateSide}>
+						{[
+							{ icon: ClipboardList, text: "Every order through your store, live", title: "Orders" },
+							{ icon: Tag, text: "Pick winning products and set your margin", title: "Products" },
+							{ icon: Clapperboard, text: "Ready-made reels for each product", title: "Video studio" },
+							{ icon: Wallet, text: "Track earnings and request payouts", title: "Earnings" },
+						].map((item) => (
+							<li key={item.title}>
+								<span className={styles.gateIcon}><item.icon size={18} /></span>
+								<span><strong>{item.title}</strong><small>{item.text}</small></span>
+							</li>
+						))}
+					</ul>
+				</section>
 			</div>
 		);
 	}
