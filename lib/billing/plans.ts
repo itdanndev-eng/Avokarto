@@ -35,7 +35,7 @@ export const PLANS: Record<PlanKey, Plan> = {
 		key: "starter",
 		listingLimit: 25,
 		name: "Starter",
-		price: 19,
+		price: 17.99,
 	},
 	pro: {
 		blurb: "For growing brands ready to expand their catalog.",
@@ -50,7 +50,7 @@ export const PLANS: Record<PlanKey, Plan> = {
 		key: "pro",
 		listingLimit: null,
 		name: "Pro",
-		price: 49,
+		price: 27.99,
 	},
 	// The extras here are services the team delivers, not product limits -
 	// keep this list to what you can actually provide.
@@ -67,7 +67,7 @@ export const PLANS: Record<PlanKey, Plan> = {
 		key: "scale",
 		listingLimit: null,
 		name: "Scale",
-		price: 99,
+		price: 59.99,
 	},
 };
 
