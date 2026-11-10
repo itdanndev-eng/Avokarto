@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useState } from "react";
 import PeriodSwitch from "@/components/billing/PeriodSwitch";
 import s from "@/components/seo/marketing.module.css";
-import { monthlyCost, PLAN_KEYS, PLANS, TRIAL_DAYS, usd, yearlySaving, type BillingPeriod } from "@/lib/billing/plans";
+import { DEFAULT_PERIOD, monthlyCost, periodQuery, PLAN_KEYS, PLANS, TRIAL_DAYS, usd, yearlySaving, type BillingPeriod } from "@/lib/billing/plans";
 
 /** The /pricing plan cards with a Monthly / Yearly switch. */
 export default function PricingPlans() {
-	const [period, setPeriod] = useState<BillingPeriod>("MONTHLY");
+	const [period, setPeriod] = useState<BillingPeriod>(DEFAULT_PERIOD);
 	const yearly = period === "YEARLY";
 	return (
 		<>
@@ -35,7 +35,7 @@ export default function PricingPlans() {
 								)}
 							</p>
 							<ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
-							<Link className={s.button} href={yearly ? "/start?period=yearly" : "/start"}>Try {plan.name} free</Link>
+							<Link className={s.button} href={periodQuery(period) ? `/start?${periodQuery(period)}` : "/start"}>Try {plan.name} free</Link>
 						</article>
 					);
 				})}

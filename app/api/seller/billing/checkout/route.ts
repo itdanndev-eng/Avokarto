@@ -4,13 +4,13 @@ import { createCheckout } from "@/lib/backend/billing";
 import { requireCustomer } from "@/lib/backend/customer-auth";
 import { handleApiError, json, parseJson } from "@/lib/backend/http";
 import { assertSameOrigin } from "@/lib/backend/request-guard";
-import { BILLING_PERIODS, PLAN_KEYS, type BillingPeriod, type PlanKey } from "@/lib/billing/plans";
+import { BILLING_PERIODS, DEFAULT_PERIOD, PLAN_KEYS, type BillingPeriod, type PlanKey } from "@/lib/billing/plans";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const body = z.object({
-	period: z.enum(BILLING_PERIODS as [BillingPeriod, ...BillingPeriod[]]).default("MONTHLY"),
+	period: z.enum(BILLING_PERIODS as [BillingPeriod, ...BillingPeriod[]]).default(DEFAULT_PERIOD),
 	plan: z.enum(PLAN_KEYS as [PlanKey, ...PlanKey[]]),
 });
 

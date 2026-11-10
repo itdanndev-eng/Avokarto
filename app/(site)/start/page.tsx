@@ -16,7 +16,7 @@ type Props = { searchParams: Promise<Record<string, string | string[] | undefine
 
 export default async function StartPage({ searchParams }: Props) {
   const [data, query] = await Promise.all([getSellLandingData(), searchParams]);
-  // ?period=yearly from the pricing pages preselects yearly billing.
+  // Yearly unless the pricing pages sent ?period=monthly.
   const period = periodFromParam(Array.isArray(query.period) ? query.period[0] : query.period);
   // Settings too: signed-out visitors design their store before registering.
   return <StartStore examples={data.products.slice(0, 3)} initialPeriod={period} publicSettings={data.settings} />;

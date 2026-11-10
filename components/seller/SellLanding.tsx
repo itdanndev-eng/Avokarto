@@ -35,7 +35,7 @@ import ModalTriggerButton from "@/components/action-buttons/ModalTriggerButton";
 import { useCustomerSession } from "@/hooks/use-customer-session";
 import type { SellLandingData } from "@/lib/backend/sell-landing";
 import PeriodSwitch from "@/components/billing/PeriodSwitch";
-import { monthlyCost, PLAN_KEYS, PLANS, TRIAL_DAYS, usd, yearlySaving, type BillingPeriod } from "@/lib/billing/plans";
+import { DEFAULT_PERIOD, monthlyCost, periodQuery, PLAN_KEYS, PLANS, TRIAL_DAYS, usd, yearlySaving, type BillingPeriod } from "@/lib/billing/plans";
 import { sellerFaqs } from "@/lib/seller-faq";
 import { resellerPrice, suggestHandle } from "@/lib/resellerPricing";
 import { STORE_THEME_INFO, STORE_THEMES, type StoreTheme } from "@/lib/storeThemes";
@@ -222,7 +222,7 @@ export default function SellLanding({ data }: { data: SellLandingData }) {
 	// so a second "Build my store" doesn't overwrite it with the default.
 	const storedTheme = useSyncExternalStore(noSubscribe, readDraftTheme, () => "" as const);
 	const [pickedTheme, setTheme] = useState<StoreTheme | null>(null);
-	const [period, setPeriod] = useState<BillingPeriod>("MONTHLY");
+	const [period, setPeriod] = useState<BillingPeriod>(DEFAULT_PERIOD);
 	const theme: StoreTheme = pickedTheme ?? (storedTheme || "minimal");
 	useEffect(() => {
 		const row = themeRow.current;
@@ -342,7 +342,8 @@ export default function SellLanding({ data }: { data: SellLandingData }) {
 	}
 
 	// `nav` renders the slim header pill (label + lime chevron dot) instead of text + arrow.
-	const primaryCta = (label: string, className = s.ctaPrimary, dashboardLabel = "Go to my dashboard", dashboardHref = "/seller", nav = false, yearly = false) => {
+	// `query` carries a non-default billing period (e.g. "period=monthly") to onboarding or billing.
+	const primaryCta = (label: string, className = s.ctaPrimary, dashboardLabel = "Go to my dashboard", dashboardHref = "/seller", nav = false, query = "") => {
 		const content = (text: string) =>
 			nav ? (
 				<>
@@ -353,11 +354,11 @@ export default function SellLanding({ data }: { data: SellLandingData }) {
 				<>{text} <ArrowRight size={18} /></>
 			);
 		return hasStore ? (
-			<Link className={className} href={yearly ? `${dashboardHref}${dashboardHref.includes("?") ? "&" : "?"}period=yearly` : dashboardHref}>
+			<Link className={className} href={query ? `${dashboardHref}${dashboardHref.includes("?") ? "&" : "?"}${query}` : dashboardHref}>
 				{content(dashboardLabel)}
 			</Link>
 		) : (
-			<Link className={className} href={yearly ? "/start?period=yearly" : "/start"} onClick={claim}>
+			<Link className={className} href={query ? `/start?${query}` : "/start"} onClick={claim}>
 				{content(label)}
 			</Link>
 		);
@@ -856,7 +857,7 @@ export default function SellLanding({ data }: { data: SellLandingData }) {
 													: "Billed monthly"}
 											</p>
 											{sales ? <p className={pr.covered}>Covered by {sales} {sales === 1 ? "sale" : "sales"} a month</p> : null}
-											{primaryCta(`Start ${TRIAL_DAYS}-day free trial`, `${s.ctaPrimary} ${styles.btnBlock} ${key === "pro" ? pr.ctaLime : pr.ctaQuiet}`, `Choose ${plan.name}`, "/seller?tab=billing", false, period === "YEARLY")}
+											{primaryCta(`Start ${TRIAL_DAYS}-day free trial`, `${s.ctaPrimary} ${styles.btnBlock} ${key === "pro" ? pr.ctaLime : pr.ctaQuiet}`, `Choose ${plan.name}`, "/seller?tab=billing", false, periodQuery(period))}
 										</div>
 										<ul className={pr.list}>
 											{plan.features.map((item) => item.startsWith("Everything in")

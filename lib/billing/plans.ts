@@ -113,9 +113,18 @@ export function usd(amount: number) {
 	return `$${Number.isInteger(amount) ? amount : amount.toFixed(2)}`;
 }
 
-/** The period a link asked for (?period=YEARLY), else monthly. */
+/** Yearly is shown first everywhere; monthly is one tap away. */
+export const DEFAULT_PERIOD: BillingPeriod = "YEARLY";
+
+/** The period a link asked for (?period=monthly), else the default (yearly). */
 export function periodFromParam(value: string | null | undefined): BillingPeriod {
-	return value?.toUpperCase() === "YEARLY" ? "YEARLY" : "MONTHLY";
+	const asked = value?.toUpperCase();
+	return asked === "MONTHLY" || asked === "YEARLY" ? asked : DEFAULT_PERIOD;
+}
+
+/** The query that carries a chosen period to /start or billing ("" for the default). */
+export function periodQuery(period: BillingPeriod) {
+	return period === DEFAULT_PERIOD ? "" : `period=${period.toLowerCase()}`;
 }
 
 /** Kelviq subscription statuses that keep a store open. past_due is the grace period after a failed renewal. */

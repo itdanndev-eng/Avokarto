@@ -10,7 +10,7 @@ import { useCustomerSession } from "@/hooks/use-customer-session";
 import { useUiStore } from "@/context/uiStore";
 import type { SellLandingProduct } from "@/lib/backend/sell-landing";
 import PeriodSwitch from "@/components/billing/PeriodSwitch";
-import { monthlyCost, PLAN_KEYS, PLANS, TRIAL_DAYS, usd, type BillingPeriod, type PlanKey } from "@/lib/billing/plans";
+import { DEFAULT_PERIOD, monthlyCost, PLAN_KEYS, PLANS, TRIAL_DAYS, usd, type BillingPeriod, type PlanKey } from "@/lib/billing/plans";
 import { resellerPrice } from "@/lib/resellerPricing";
 import { STORE_NAME_EXAMPLES, storeNameIdeas, storeNamePool, TAGLINE_EXAMPLES, taglineIdeas } from "@/lib/storeNameIdeas";
 import { useTypedPlaceholder } from "@/hooks/useTypedPlaceholder";
@@ -54,7 +54,7 @@ function subscribeResize(onChange: () => void) {
  * visitor tried on the homepage; sends sellers who already have a store to
  * their dashboard. On phones the live store opens full screen on request.
  */
-export default function StartStore({ examples, initialPeriod = "MONTHLY", publicSettings = null }: { examples: SellLandingProduct[]; initialPeriod?: BillingPeriod; publicSettings?: SellerSettings | null }) {
+export default function StartStore({ examples, initialPeriod = DEFAULT_PERIOD, publicSettings = null }: { examples: SellLandingProduct[]; initialPeriod?: BillingPeriod; publicSettings?: SellerSettings | null }) {
 	const id = useId();
 	const router = useRouter();
 	const { customer, hydrated, refresh } = useCustomerSession();

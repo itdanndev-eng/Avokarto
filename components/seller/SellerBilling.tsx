@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp, Check, CreditCard, ExternalLink, Loader2, Lock, Ref
 import { useEffect, useRef, useState } from "react";
 import { useLiveResource } from "@/hooks/use-live-resource";
 import PeriodSwitch from "@/components/billing/PeriodSwitch";
-import { grantsAccess, periodFromParam, planPrice, PLAN_KEYS, PLANS, TRIAL_DAYS, type BillingPeriod, type PlanKey } from "@/lib/billing/plans";
+import { DEFAULT_PERIOD, grantsAccess, periodFromParam, planPrice, PLAN_KEYS, PLANS, TRIAL_DAYS, type BillingPeriod, type PlanKey } from "@/lib/billing/plans";
 import { sellerRequest, SellerApiError } from "./sellerApi";
 import styles from "./seller.module.css";
 
@@ -80,13 +80,14 @@ export default function SellerBilling({ onToast }: { onToast: (message: string) 
 	const [gaveUp, setGaveUp] = useState(false);
 	const hasAccess = grantsAccess(billing?.subscription?.status);
 	const returning = returned && !hasAccess && !gaveUp;
-	// ?period=yearly from the pricing pages preselects yearly.
+	// ?period=monthly (or yearly) from the pricing pages preselects that period.
 	const [periodChoice, setPeriod] = useState<BillingPeriod | null>(() => {
 		const asked = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("period");
 		return asked ? periodFromParam(asked) : null;
 	});
 	// Start on the period the seller already pays for.
-	const period: BillingPeriod = periodChoice ?? billing?.subscription?.chargePeriod ?? "MONTHLY";
+	// A subscriber sees the period they pay for; everyone else starts on yearly.
+	const period: BillingPeriod = periodChoice ?? billing?.subscription?.chargePeriod ?? DEFAULT_PERIOD;
 	const [pending, setPending] = useState<Pending>(null);
 	const [reason, setReason] = useState("");
 	const [comment, setComment] = useState("");
