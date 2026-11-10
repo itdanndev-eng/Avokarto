@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, Bell, Check, ChevronRight, CreditCard, Eye, Glob
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import ModalTriggerButton from "@/components/action-buttons/ModalTriggerButton";
 import { useCustomerSession } from "@/hooks/use-customer-session";
 import { useUiStore } from "@/context/uiStore";
@@ -12,7 +12,7 @@ import type { SellLandingProduct } from "@/lib/backend/sell-landing";
 import PeriodSwitch from "@/components/billing/PeriodSwitch";
 import { monthlyCost, PLAN_KEYS, PLANS, TRIAL_DAYS, usd, yearlySaving, type BillingPeriod, type PlanKey } from "@/lib/billing/plans";
 import { resellerPrice } from "@/lib/resellerPricing";
-import { STORE_NAME_EXAMPLES, storeNameIdeas, TAGLINE_EXAMPLES, taglineIdeas } from "@/lib/storeNameIdeas";
+import { STORE_NAME_EXAMPLES, storeNameIdeas, storeNamePool, TAGLINE_EXAMPLES, taglineIdeas } from "@/lib/storeNameIdeas";
 import { useTypedPlaceholder } from "@/hooks/useTypedPlaceholder";
 import { STORE_THEME_INFO, STORE_THEMES, type StoreTheme } from "@/lib/storeThemes";
 import ProductImage from "./ProductImage";
@@ -23,6 +23,7 @@ import { STORE_ACCENTS } from "./StoreForm";
 import StorePrototype, { type PrototypeDevice } from "./StorePrototype";
 import { money, sellerRequest, type SellerApiError, type SellerSettings, type SellerStore } from "./sellerApi";
 import { useStoreHandle } from "./useStoreHandle";
+import { useUnavailableHandles } from "./useUnavailableHandles";
 import styles from "./seller.module.css";
 import shared from "./sell.module.css";
 import s from "./builder.module.css";
@@ -76,7 +77,10 @@ export default function StartStore({ examples, initialPeriod = "MONTHLY", public
 	// Picking an idea doesn't change what they're built on - only typing does.
 	const [ideaRound, setIdeaRound] = useState(0);
 	const [ideaSource, setIdeaSource] = useState<string | null>(null);
-	const nameIdeas = storeNameIdeas(ideaSource ?? draftName, name, ideaRound);
+	// Only names whose store link is still free are offered.
+	const ideaPool = storeNamePool(ideaSource ?? draftName).pool;
+	const ideaLinks = useUnavailableHandles(ideaPool);
+	const nameIdeas = storeNameIdeas(ideaSource ?? draftName, name, ideaRound, 3, ideaLinks.isUnavailable);
 	const [tagline, setTagline] = useState("");
 	const [whatsapp, setWhatsapp] = useState("");
 	const [pickedTheme, setTheme] = useState<StoreTheme | null>(null);
@@ -131,7 +135,12 @@ export default function StartStore({ examples, initialPeriod = "MONTHLY", public
 	// An empty name field types out real-sounding examples (once the form,
 	// not the loading screen, is showing - the input has to exist).
 	const nameFieldShown = hydrated && !(customer && !state && !loadError) && step === 0;
-	useTypedPlaceholder(nameInputRef, STORE_NAME_EXAMPLES, { active: nameFieldShown && !name });
+	// The typed placeholder only cycles through names that are still free.
+	const exampleLinks = useUnavailableHandles(STORE_NAME_EXAMPLES);
+	// Keyed on the names themselves so the animation only restarts when the list really changes.
+	const freeExamplesKey = STORE_NAME_EXAMPLES.filter((example) => !exampleLinks.isUnavailable(example)).join("|");
+	const freeExamples = useMemo(() => freeExamplesKey.split("|").filter(Boolean), [freeExamplesKey]);
+	useTypedPlaceholder(nameInputRef, freeExamples, { active: nameFieldShown && !name && exampleLinks.ready });
 	// The tagline gets the same: typed examples, plus ideas to tap.
 	const taglineInputRef = useRef<HTMLInputElement>(null);
 	const [taglineRound, setTaglineRound] = useState(0);
@@ -505,7 +514,7 @@ export default function StartStore({ examples, initialPeriod = "MONTHLY", public
 												<div aria-label="Store name ideas" className={s.nameIdeas} role="group">
 													<span className={s.nameIdeasLabel}>{nameIdeas.seed ? "Ideas for you" : "Need an idea?"}</span>
 													<div className={s.nameIdeasRow} key={`${nameIdeas.seed ?? ""}-${ideaRound}`}>
-														{nameIdeas.ideas.map((idea, index) => <button key={idea} onClick={() => { setError(null); setName(idea); }} style={{ "--i": index } as React.CSSProperties} type="button">{idea}</button>)}
+														{!ideaLinks.ready ? null : nameIdeas.ideas.map((idea, index) => <button key={idea} onClick={() => { setError(null); setName(idea); }} style={{ "--i": index } as React.CSSProperties} type="button">{idea}</button>)}
 														<button aria-label="Show more name ideas" className={s.nameShuffle} data-spin={ideaRound % 2 ? "a" : "b"} onClick={() => setIdeaRound((round) => round + 1)} title="More ideas" type="button"><RefreshCw size={15} /></button>
 													</div>
 												</div>

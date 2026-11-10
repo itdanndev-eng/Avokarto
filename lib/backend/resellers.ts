@@ -438,6 +438,24 @@ export async function isHandleAvailable(handle: string, exceptStoreId?: string) 
 		: { available: true, reason: null };
 }
 
+/**
+ * Of these candidate links, the ones that can't be used: invalid or reserved,
+ * or already another store's. One query for a whole list of name ideas.
+ */
+export async function unavailableHandles(handles: string[], exceptStoreId?: string) {
+	const unique = [...new Set(handles.map((handle) => handle.trim().toLowerCase()).filter(Boolean))];
+	const blocked = new Set(unique.filter((handle) => handleProblem(handle)));
+	const valid = unique.filter((handle) => !blocked.has(handle));
+	if (valid.length) {
+		const taken = await dbQuery<{ handle: string }>(
+			`SELECT handle FROM reseller_stores WHERE handle = ANY($1::text[]) AND id::text <> $2`,
+			[valid, exceptStoreId ?? ""],
+		);
+		for (const row of taken.rows) blocked.add(row.handle);
+	}
+	return [...blocked];
+}
+
 export async function createStore(customerId: string, body: unknown) {
 	const settings = await getResellerSettings();
 	if (!settings.signupsOpen) {

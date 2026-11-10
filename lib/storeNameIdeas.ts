@@ -59,11 +59,18 @@ export function nameSeed(typed: string) {
  * `typed` is what the seller wrote themselves (ideas build on it); `current`
  * is the name in the field now, which is never suggested back.
  */
-export function storeNameIdeas(typed: string, current: string, round: number, count = 3) {
+export function storeNameIdeas(typed: string, current: string, round: number, count = 3, isUnavailable?: (name: string) => boolean) {
+  const { pool, seed } = storeNamePool(typed);
+  // Names whose store link is already taken are never offered.
+  const usable = isUnavailable ? pool.filter((name) => !isUnavailable(name)) : pool;
+  return { ideas: pickIdeas(usable, current, round, count), seed };
+}
+
+/** Every name the ideas for this input can come from, to check their links in one go. */
+export function storeNamePool(typed: string) {
   // A name picked from the list keeps the list (not "Maple & Co." for "Maple & Moss").
   const seed = STORE_NAME_EXAMPLES.some((name) => name.toLowerCase() === typed.trim().toLowerCase()) ? null : nameSeed(typed);
-  const pool = seed ? PATTERNS.map((pattern) => pattern(seed)) : STORE_NAME_EXAMPLES;
-  return { ideas: pickIdeas(pool, current, round, count), seed };
+  return { pool: seed ? PATTERNS.map((pattern) => pattern(seed)) : STORE_NAME_EXAMPLES, seed };
 }
 
 /** Short, believable taglines for a dropshipping store - no promises the seller can't keep. */
@@ -90,6 +97,7 @@ export function taglineIdeas(current: string, round: number, count = 2) {
 function pickIdeas(pool: readonly string[], current: string, round: number, count: number) {
   const currentKey = current.trim().toLowerCase();
   const ideas: string[] = [];
+  if (!pool.length) return ideas;
   // Coprime with the pool size: walks every idea before repeating.
   const stride = strideFor(pool.length);
   for (let index = 0; ideas.length < count && index < pool.length; index += 1) {
