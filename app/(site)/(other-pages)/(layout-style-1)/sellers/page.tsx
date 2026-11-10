@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = pageMetadata({
   title: "Sellers",
   description: "Discover independent sellers on Avokarto - follow their profiles and shop their own themed stores, with Avokarto delivery.",
+  path: "/sellers",
 });
 
 const PER_PAGE = 24;

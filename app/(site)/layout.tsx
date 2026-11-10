@@ -76,6 +76,11 @@ export const metadata: Metadata = {
 // top-level "@context" and an "@graph" (not a bare array): some JSON-LD
 // readers - e.g. shopping/price-tracker browser extensions - assume every
 // block has "@context" and crash on arrays.
+const SAME_AS = (process.env.SITE_SAME_AS ?? "")
+  .split(",")
+  .map((url) => url.trim())
+  .filter((url) => /^https:\/\/[^\s]+$/.test(url));
+
 const siteJsonLd = {
   "@context": "https://schema.org",
   "@graph": [
@@ -86,11 +91,16 @@ const siteJsonLd = {
       description: SITE_DESCRIPTION,
       url: siteUrl(),
       logo: { "@type": "ImageObject", url: `${siteUrl()}/icon.png`, width: 512, height: 512 },
+      contactPoint: { "@type": "ContactPoint", contactType: "customer support", email: "support@avokarto.com", availableLanguage: ["en"] },
+      // The brand's own profiles (comma-separated URLs), so search engines tie them to this site.
+      ...(SAME_AS.length ? { sameAs: SAME_AS } : {}),
     },
     {
       "@type": "WebSite",
       "@id": `${siteUrl()}/#website`,
       name: SITE_NAME,
+      // How Google may name the site in results; keeps "Avokarto" apart from look-alike names.
+      alternateName: [`${SITE_NAME}.com`],
       url: siteUrl(),
       inLanguage: "en-US",
       description: SITE_DESCRIPTION,

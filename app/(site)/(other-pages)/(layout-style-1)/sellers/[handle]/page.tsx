@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = profile.tagline || `${profile.name} on Avokarto - ${profile.products} products, ${profile.followers} followers.`;
   const image = { alt: profile.name, height: 630, url: `/api/stores/share-image?handle=${encodeURIComponent(profile.handle)}`, width: 1200 };
   return {
-    ...pageMetadata({ title: `${profile.name} (@${profile.handle})`, description }),
+    ...pageMetadata({ title: `${profile.name} (@${profile.handle})`, description, path: `/sellers/${encodeURIComponent(profile.handle)}` }),
     openGraph: { description, images: [image], title: `${profile.name} on Avokarto`, type: "profile" },
     twitter: { card: "summary_large_image", description, images: [image.url], title: `${profile.name} on Avokarto` },
   };

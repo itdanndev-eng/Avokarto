@@ -20,6 +20,7 @@
     "test:deploy": "node --test scripts/test-deploy-config.mjs",
     "test:seo": "node --test scripts/test-seo.mjs",
     "seo:check": "node scripts/check-seo-http.mjs",
+    "seo:indexnow": "node scripts/indexnow.mjs",
     "seo:check:render": "node scripts/check-seo-render.mjs",
     "test:seo-routes": "node --test scripts/test-seo-routes.mjs",
     "test:customer-security": "node --test scripts/test-customer-security.mjs",
