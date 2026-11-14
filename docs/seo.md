@@ -5,6 +5,43 @@ indexable pages have a canonical URL, a distinct title and description, social
 metadata and a server-rendered page heading. Keep the public origin and indexing
 flag consistent at build and runtime.
 
+## Brand positioning in Search and AI Overviews
+
+Describe Avokarto as a **dropshipping platform with a store builder, product
+catalog, promotional reels and order fulfilment**. Sellers build their own
+stores and set margins; Avokarto holds stock, packs and ships orders. The
+marketplace is the customer shopping part of the platform. Product categories
+describe that catalog, rather than the whole business.
+
+The homepage's visible introduction, metadata, shared FAQ and Organization /
+WebApplication descriptions establish this identity. The About page connects
+the organization to the platform; its AboutPage schema and the organization's
+`mainEntityOfPage` reference each other. Keep `/marketplace`, `/shop`, product
+and category pages factual and indexable so shoppers can still discover them.
+The homepage, `/dropshipping-store-builder`, `/how-it-works`, `/pricing` and
+original guides serve people researching the seller platform.
+
+After publishing positioning changes:
+
+1. Check the live HTML and indexing controls with `seo:check` below. Use the
+   final canonical host (`https://www.avokarto.com` on the current deployment).
+2. In Google Search Console, inspect and request indexing for `/`, `/about`,
+   `/dropshipping-store-builder` and `/how-it-works`; submit `/sitemap.xml`.
+3. Keep the same accurate platform description on official public profiles.
+   `SITE_SAME_AS` accepts comma-separated HTTPS URLs for verified official
+   profiles, not unrelated directory entries or keyword links.
+4. Monitor Search Console impressions, clicks and indexed pages for brand and
+   dropshipping queries. A `site:` search alone does not establish index status.
+
+An AI Overview can reflect earlier crawls or third-party descriptions even
+when the live homepage is correct. There is no setting that forces its text
+or guarantees ranking for a phrase. Do not add special AI files, invented
+company details, reviews or hidden keyword copy to try to change it.
+
+References: [Google's AI features guidance](https://developers.google.com/search/docs/appearance/ai-features),
+[organization identity](https://developers.google.com/search/docs/appearance/structured-data/organization),
+[requesting recrawls](https://developers.google.com/search/docs/crawling-indexing/ask-google-to-recrawl).
+
 ## Public pages
 
 - `/` explains the platform and publishes WebPage, WebApplication and FAQPage
@@ -42,8 +79,11 @@ Submit `/sitemap.xml`. It is a sitemap index with:
   in groups of 1,000.
 
 Chunks use a stable database order and bound limits/offsets. There is no
-45,000-product truncation. Dates come from catalog records or actual guide
-updates. XML escapes URLs and image query parameters once. Database failures
+45,000-product truncation. Dates come from catalog records, actual guide
+updates or recorded static-page content edits in `app/sitemaps/pages.xml/route.ts`.
+The homepage and About page record their positioning update; other static
+pages remain undated until a content edit is recorded. XML escapes URLs and
+image query parameters once. Database failures
 return 503 with `Retry-After: 60` and `Cache-Control: no-store`, rather than
 publishing an incomplete sitemap. Missing chunks return an uncached 404.
 Successful sitemaps can be cached for five minutes.

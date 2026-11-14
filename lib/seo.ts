@@ -9,7 +9,7 @@ import { gtinProperty, SEO_DESCRIPTION_MAX } from "@/lib/productSeoFields";
 export const SITE_NAME = "Avokarto";
 export const SITE_TAGLINE = "Dropshipping Store Builder & Product Reels";
 export const SITE_DESCRIPTION =
-  "Build a branded dropshipping store with ready-made product reels. Pick products, set your margin, and let Avokarto pack and ship orders. Try 7 days free.";
+  "Avokarto is a dropshipping platform with a store builder, product catalog and ready-made reels. Launch your branded store; we pack and ship your orders.";
 // The shop behind the platform keeps its own pitch (/marketplace, shop pages).
 export const MARKETPLACE_TAGLINE = "Pet Accessories, Gadgets & Novelty Finds";
 export const MARKETPLACE_DESCRIPTION =

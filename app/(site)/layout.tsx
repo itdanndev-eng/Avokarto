@@ -90,6 +90,7 @@ const siteJsonLd = {
       name: SITE_NAME,
       description: SITE_DESCRIPTION,
       url: siteUrl(),
+      mainEntityOfPage: { "@id": `${siteUrl()}/about#webpage` },
       logo: { "@type": "ImageObject", url: `${siteUrl()}/icon.png`, width: 512, height: 512 },
       contactPoint: { "@type": "ContactPoint", contactType: "customer support", email: "support@avokarto.com", availableLanguage: ["en"] },
       // The brand's own profiles (comma-separated URLs), so search engines tie them to this site.
@@ -105,6 +106,7 @@ const siteJsonLd = {
       inLanguage: "en-US",
       description: SITE_DESCRIPTION,
       publisher: { "@id": `${siteUrl()}/#organization` },
+      about: { "@id": `${siteUrl()}/#application` },
     },
   ],
 };

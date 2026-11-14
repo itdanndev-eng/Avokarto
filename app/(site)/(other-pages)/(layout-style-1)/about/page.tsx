@@ -1,4 +1,5 @@
-import { pageMetadata } from "@/lib/seo";
+import { jsonLdString, pageMetadata, SITE_DESCRIPTION } from "@/lib/seo";
+import { aboutPageJsonLd } from "@/lib/seo-platform";
 import { FreeShippingAmount, IfFreeShipping } from "@/components/common/FreeShipping";
 import Link from "next/link";
 import { ArrowRight, LayoutGrid, LifeBuoy, Store, Truck } from "lucide-react";
@@ -8,25 +9,26 @@ import { PLANS, TRIAL_DAYS } from "@/lib/billing/plans";
 import { Metadata } from "next";
 
 export const metadata: Metadata = pageMetadata({
-  title: "About Us",
-  description:
-    "Meet Avokarto, the all-in-one dropshipping platform: launch your own store, sell winning products and let us stock, pack and ship every order. Plus a marketplace to shop it all.",
+  title: "About Our Dropshipping Platform",
+  description: SITE_DESCRIPTION,
   path: "/about",
 });
 
 export default function page() {
   return (
     <section className={`rbt-bg-color-gray-light ${styles.page}`}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(aboutPageJsonLd()) }} />
       <div className="container">
         <header className={styles.hero}>
           <p className={styles.eyebrow}>About us</p>
-          <h1 className={styles.title}>About Avokarto</h1>
+          <h1 className={styles.title}>About Avokarto&apos;s dropshipping platform</h1>
           <p className={styles.lead}>
-            Avokarto is an all-in-one dropshipping platform. Anyone can open
-            their own branded store in a minute, add winning products from our
-            catalog and share ready-made promo reels - while we hold the
-            stock, pack and ship every order. Prefer to shop? Everything we
-            stock is also on the Avokarto marketplace.
+            Avokarto is a dropshipping platform with a branded store builder,
+            product catalog, ready-made promotional reels and order fulfilment.
+            Sellers choose products, set their margins and promote their own
+            stores. Avokarto holds the stock, packs and ships customer orders.
+            The Avokarto marketplace is the shopping side of the platform,
+            where customers can buy directly from the catalog.
           </p>
           <div className={styles.actions}>
             <Link className="rbt-btn rbt-btn-primary" href="/">
@@ -43,13 +45,14 @@ export default function page() {
             <span className={styles.icon} aria-hidden="true">
               <Store size={22} />
             </span>
-            <h2 className={styles.cardTitle}>Sell without stock</h2>
+            <h2 className={styles.cardTitle}>Build a dropshipping store</h2>
             <p className={styles.cardText}>
               <Link href="/start">Start your {TRIAL_DAYS}-day free trial</Link>, pick products and set
               your own margin. Plans start at ${PLANS.starter.price} USD a month
               after the trial, with no product inventory to buy upfront.
               Customers pay when they order, we deliver, and eligible earnings
-              can be paid out to your bank. <Link href="/pricing">Compare plans</Link>.
+              can be paid out to your bank. Explore the <Link href="/dropshipping-store-builder">store builder</Link>,
+              learn <Link href="/how-it-works">how dropshipping works</Link> or <Link href="/pricing">compare plans</Link>.
             </p>
           </article>
 

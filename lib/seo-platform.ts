@@ -15,6 +15,7 @@ export function platformApplicationJsonLd() {
     operatingSystem: "Web browser",
     browserRequirements: "Requires JavaScript and an internet connection",
     provider: { "@id": `${siteUrl()}/#organization` },
+    mainEntityOfPage: { "@id": `${siteUrl()}/#webpage` },
     featureList: ["Branded dropshipping stores", "Product catalog", "Store themes", "Product reels and video studio", "Order fulfilment", "Seller dashboard"],
     // Monthly and yearly billing for every plan.
     offers: PLAN_KEYS.flatMap((key) => ([
@@ -34,6 +35,20 @@ export function platformApplicationJsonLd() {
         billingDuration: period.billingDuration,
       },
     }))),
+  };
+}
+
+export function aboutPageJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "AboutPage",
+    "@id": `${siteUrl()}/about#webpage`,
+    url: `${siteUrl()}/about`,
+    name: `About ${SITE_NAME}'s Dropshipping Platform`,
+    description: SITE_DESCRIPTION,
+    isPartOf: { "@id": `${siteUrl()}/#website` },
+    mainEntity: { "@id": `${siteUrl()}/#organization` },
+    about: { "@id": `${siteUrl()}/#application` },
   };
 }
 

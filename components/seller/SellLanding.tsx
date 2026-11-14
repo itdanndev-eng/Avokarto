@@ -565,8 +565,9 @@ export default function SellLanding({ data }: { data: SellLandingData }) {
 						</span>
 					</h1>
 					<p className={s.heroText}>
-						Pick winning products, launch your store and post ready-made videos.
-						We stock, pack and ship every order. The profit is yours.
+						Avokarto is a dropshipping platform. Build your branded store,
+						choose products and share ready-made reels. We hold the stock,
+						pack and ship orders for you.
 					</p>
 
 					{claimForm("hero")}
@@ -972,7 +973,7 @@ export default function SellLanding({ data }: { data: SellLandingData }) {
 							<Image alt="" height={28} src="/assets/images/logo/avokarto-logo-mark.webp" width={28} />
 							<span>avokarto</span>
 						</Link>
-						<p className={styles.muted}>Pick winning products, launch your store and post ready-made reels. We ship every order.</p>
+						<p className={styles.muted}>Avokarto is a dropshipping platform with a store builder, product reels and order fulfilment.</p>
 					</div>
 					{footerColumns.map(([title, links]) => (
 						<nav aria-label={title} className={s.footerCol} key={title}>

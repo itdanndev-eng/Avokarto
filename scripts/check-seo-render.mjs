@@ -3,6 +3,7 @@
 // application data. Next's request mocks are tied to the installed Next version.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { ServerResponse } from "node:http";
 import { createRequire } from "node:module";
 import { Socket } from "node:net";
 import { fileURLToPath } from "node:url";
@@ -67,6 +68,13 @@ function schema(html) {
 async function render(url, userAgent = "Mozilla/5.0 SEO render verification") {
   const chunks = [];
   const { req, res } = createRequestResponseMocks({ url, socket: new Socket(), headers: { host: host.host, "user-agent": userAgent }, resWriter: (chunk) => { chunks.push(Buffer.from(chunk)); return true; } });
+  // Next's mock stores headers in Web Headers, collapsing arrays into a single
+  // comma-joined value. Preserve Node's real header semantics so repeated
+  // redirects from metadata/page rendering are deduplicated as in production.
+  const headerResponse = new ServerResponse(req);
+  for (const method of ["setHeader", "appendHeader", "getHeader", "getHeaders", "getHeaderNames", "hasHeader", "removeHeader"]) {
+    res[method] = headerResponse[method].bind(headerResponse);
+  }
   await app.getRequestHandler()(req, res);
   await res.hasStreamed;
   const bytes = Buffer.concat(chunks);
@@ -75,7 +83,7 @@ async function render(url, userAgent = "Mozilla/5.0 SEO render verification") {
 
 try {
   await app.prepare();
-  for (const path of ["/", "/pricing", "/how-it-works", "/dropshipping-store-builder", "/guides", "/guides/how-to-start-dropshipping", "/guides/choose-dropshipping-products", "/guides/price-dropshipping-products", "/shop", "/shop?page=2", "/category/pet-accessories", "/category/pet-accessories?page=2", "/category/empty-category", "/product/fixture-pet-1"]) {
+  for (const path of ["/", "/about", "/pricing", "/how-it-works", "/dropshipping-store-builder", "/guides", "/guides/how-to-start-dropshipping", "/guides/choose-dropshipping-products", "/guides/price-dropshipping-products", "/shop", "/shop?page=2", "/category/pet-accessories", "/category/pet-accessories?page=2", "/category/empty-category", "/product/fixture-pet-1"]) {
     const result = await render(path);
     assert.equal(result.status, 200, path);
     const body = stripScripts(result.html);
@@ -100,7 +108,17 @@ try {
     if (path.startsWith("/guides/")) assert.ok(schema(result.html).some((entry) => entry["@type"] === "Article"));
     if (path === "/") {
       const faq = schema(result.html).find((entry) => entry["@type"] === "FAQPage");
-      assert.equal(faq.mainEntity.length, 9);
+      assert.equal(faq.mainEntity.length, (body.match(/<summary\b/g) || []).length);
+      for (const question of faq.mainEntity) assert.ok(body.includes(question.name), `visible FAQ: ${question.name}`);
+      assert.match(body, /Avokarto is a dropshipping platform/);
+    }
+    if (path === "/about") {
+      const entries = schema(result.html);
+      const about = entries.find((entry) => entry["@type"] === "AboutPage");
+      const organization = entries.find((entry) => entry["@type"] === "Organization");
+      assert.equal(about.mainEntity["@id"], organization["@id"]);
+      assert.equal(organization.mainEntityOfPage["@id"], about["@id"]);
+      assert.match(body, /Avokarto is a dropshipping platform/);
     }
     console.log(`PASS ${path}: rendered heading, canonical, metadata and content`);
   }
@@ -111,7 +129,10 @@ try {
   for (const [alias, target] of [["/categories-list", "/shop-by-categories"], ["/shop-by-category", "/shop-by-categories"], ["/product/SEO-1", "/product/fixture-pet-1"]]) {
     const result = await render(alias);
     assert.equal(result.status, 308, alias);
-    assert.equal(new URL(result.headers.location, origin).pathname, target);
+    // Node outgoing headers can be arrays; every emitted destination must agree.
+    const locations = Array.isArray(result.headers.location) ? result.headers.location : [result.headers.location];
+    assert.equal(new Set(locations).size, 1, `${alias} has a single redirect destination`);
+    assert.equal(new URL(locations[0], origin).pathname, target);
   }
   const search = await render("/shop?q=cat");
   assert.match(stripScripts(search.html), /<meta name="robots" content="noindex/);
@@ -122,6 +143,10 @@ try {
   assert.equal(image.bytes.readUInt32BE(16), 1200);
   assert.equal(image.bytes.readUInt32BE(20), 630);
   console.log("PASS aliases, search exclusion, preview sitemap and 1200×630 social image");
+} catch (error) {
+  // Next installs an uncaught-error handler; retain a failing exit code in CI.
+  process.exitCode = 1;
+  throw error;
 } finally {
   await app.close();
 }
